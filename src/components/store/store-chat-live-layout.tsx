@@ -12,10 +12,9 @@ import Select from "@/components/ui/select";
 import IconButton from "@/components/ui/icon-button";
 import ChatLogLayout from "@/components/chat/chat-log-layout";
 import MessageComposer from "@/components/chat/message-composer";
-import StoreChatGuide from "@/components/store/elements/store-chat-guide";
-import StoreChannelConnectPanel from "@/components/store/elements/store-channel-connect-panel";
+import StoreChatCloseButton from "@/components/store/elements/store-chat-close-button";
 
-/** 매장 고객 대화 — Realtime + 가이드 + 채팅 UI */
+/** 매장 고객 대화 — Realtime + 채팅 UI */
 const StoreChatLiveLayout = ({
   storeId,
   conversations: initialConversations,
@@ -24,10 +23,7 @@ const StoreChatLiveLayout = ({
   q,
   channel,
   reservationLinks,
-  channelConnections,
   translationEnabled,
-  lineWebhookUrl,
-  lineDiagnostic,
 }: StoreChatLiveLayoutProps) => {
   const router = useRouter();
 
@@ -58,16 +54,10 @@ const StoreChatLiveLayout = ({
     router.push(buildChatUrl({ conversation: id }));
   };
 
-  return (
-    <div className="space-y-4">
-      <StoreChatGuide translationEnabled={translationEnabled} />
-      <StoreChannelConnectPanel
-        connections={channelConnections}
-        lineWebhookUrl={lineWebhookUrl}
-        lineDiagnostic={lineDiagnostic}
-      />
+  const selectedConversation = conversations.find((item) => item.id === conversationId);
 
-      <ChatLogLayout
+  return (
+    <ChatLogLayout
         toolbar={
           <form method="get" className={toolbarRowClass}>
             <div className="min-w-0 flex-1">
@@ -112,6 +102,15 @@ const StoreChatLiveLayout = ({
         messages={messages}
         conversationId={conversationId}
         onSelectConversation={onSelectConversation}
+        conversationActions={
+          conversationId ? (
+            <StoreChatCloseButton
+              conversationId={conversationId}
+              customerName={selectedConversation?.customer_name}
+              redirectPath={buildChatUrl({ conversation: undefined })}
+            />
+          ) : undefined
+        }
         composer={
           conversationId ? (
             <MessageComposer
@@ -123,7 +122,6 @@ const StoreChatLiveLayout = ({
           ) : undefined
         }
       />
-    </div>
   );
 };
 

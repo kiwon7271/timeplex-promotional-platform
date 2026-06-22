@@ -169,3 +169,58 @@ export const onSendMessage = async (formData: FormData): Promise<ActionResult> =
   revalidatePath("/store/chats");
   return { ok: true };
 };
+
+/** 대화 종료 — 메시지·첨부·Storage 삭제 (복구 불가) */
+export const onCloseConversation = async (conversationId: string): Promise<ActionResult> => {
+  const profile = await requireStoreUser();
+  if (!profile.store_id) return { ok: false, message: "소속 매장이 없습니다." };
+
+  const consented = await hasStoreChatConsent(profile.store_id);
+  if (!consented) return { ok: false, message: "동의/고지 약관에 동의한 후 이용할 수 있습니다." };
+
+  if (!conversationId) return { ok: false, message: "대화를 선택하세요." };
+
+  const supabase = createClient();
+
+  const { data: conversation } = await supabase
+    .from("conversations")
+    .select("id, store_id")
+    .eq("id", conversationId)
+    .single();
+
+  if (!conversation || conversation.store_id !== profile.store_id) {
+    return { ok: false, message: "대화를 찾을 수 없습니다." };
+  }
+
+  const { data: attachmentRows } = await supabase
+    .from("messages")
+    .select("message_attachments(file_path)")
+    .eq("conversation_id", conversationId);
+
+  const filePaths =
+    attachmentRows?.flatMap((row) => {
+      const attachments = row.message_attachments as { file_path: string }[] | null;
+      return attachments?.map((item) => item.file_path).filter(Boolean) ?? [];
+    }) ?? [];
+
+  if (filePaths.length > 0) {
+    const { error: storageError } = await supabase.storage
+      .from(BUCKETS.CHAT_ATTACHMENTS)
+      .remove(filePaths);
+
+    if (storageError) {
+      console.error("[close conversation] storage remove failed:", storageError.message);
+    }
+  }
+
+  const { error } = await supabase
+    .from("conversations")
+    .delete()
+    .eq("id", conversationId)
+    .eq("store_id", profile.store_id);
+
+  if (error) return { ok: false, message: error.message };
+
+  revalidatePath("/store/chats");
+  return { ok: true };
+};

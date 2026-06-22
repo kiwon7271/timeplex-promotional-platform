@@ -33,10 +33,10 @@ const StoreChatGuide = ({ translationEnabled }: StoreChatGuideProps) => (
           · 답장은 <strong>한국어로 작성</strong>하면 고객 언어로 자동 번역되어 전달됩니다.
         </li>
         <li>
-          · 새 메시지는 <strong>실시간</strong>으로 아래 채팅창에 나타납니다.
+          · 새 메시지는 <strong>실시간</strong>으로 채팅 화면에 나타납니다.
         </li>
         <li>
-          · 왓츠앱·라인·인스타그램 연동은 준비 중이며, 연결 후 같은 화면에서 확인할 수 있습니다.
+          · 아래에서 <strong>라인</strong> 등 메신저를 연결하면 같은 화면에서 대화할 수 있습니다.
         </li>
       </ul>
       {!translationEnabled ? (

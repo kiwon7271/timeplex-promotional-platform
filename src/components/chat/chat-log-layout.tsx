@@ -21,6 +21,7 @@ const ChatLogLayout = ({
   onSelectConversation,
   listPlaceholder,
   composer,
+  conversationActions,
 }: ChatLogLayoutProps) => {
   const logScrollRef = useRef<HTMLDivElement>(null);
   const mediaScrollTimerRef = useRef<number | null>(null);
@@ -103,22 +104,27 @@ const ChatLogLayout = ({
           </aside>
 
           <section className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <div className={panelHeaderClass}>
+            <div className={cn(panelHeaderClass, "justify-between")}>
               {selectedConversation ? (
                 <>
-                  <p className="truncate text-[14px] font-medium leading-[20px] text-gray-900">
-                    {selectedConversation.customer_name ?? "고객"}
-                  </p>
-                  <Badge value={selectedConversation.channel} />
-                  {selectedConversation.customer_locale ? (
-                    <span className="truncate text-[12px] font-normal text-gray-500">
-                      고객 언어: {getLocaleLabelKo(selectedConversation.customer_locale)}
-                    </span>
-                  ) : null}
-                  {selectedConversation.customer_phone ? (
-                    <span className="truncate text-[12px] font-normal text-gray-500">
-                      {selectedConversation.customer_phone}
-                    </span>
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                    <p className="truncate text-[14px] font-medium leading-[20px] text-gray-900">
+                      {selectedConversation.customer_name ?? "고객"}
+                    </p>
+                    <Badge value={selectedConversation.channel} />
+                    {selectedConversation.customer_locale ? (
+                      <span className="truncate text-[12px] font-normal text-gray-500">
+                        고객 언어: {getLocaleLabelKo(selectedConversation.customer_locale)}
+                      </span>
+                    ) : null}
+                    {selectedConversation.customer_phone ? (
+                      <span className="truncate text-[12px] font-normal text-gray-500">
+                        {selectedConversation.customer_phone}
+                      </span>
+                    ) : null}
+                  </div>
+                  {conversationActions ? (
+                    <div className="shrink-0">{conversationActions}</div>
                   ) : null}
                 </>
               ) : (

@@ -17,6 +17,8 @@ interface StoreChannelConnectPanelProps {
   connections: StoreChannelConnection[];
   lineWebhookUrl: string;
   lineDiagnostic: LineConnectionDiagnostic;
+  /** 모달 내부 — 바깥 테두리 제거 */
+  embedded?: boolean;
 }
 
 const getConnectionStatus = (
@@ -35,8 +37,9 @@ const StoreChannelConnectPanel = ({
   connections,
   lineWebhookUrl,
   lineDiagnostic,
+  embedded = false,
 }: StoreChannelConnectPanelProps) => (
-  <div className="rounded-lg border border-gray-200 bg-white p-4">
+  <div className={embedded ? "space-y-3" : "rounded-lg border border-gray-200 bg-white p-4"}>
     <div className="mb-3">
       <Text.Body2 className="font-semibold text-gray-900">메신저 연결</Text.Body2>
       <Text.Body3 className="mt-1 text-gray-600">

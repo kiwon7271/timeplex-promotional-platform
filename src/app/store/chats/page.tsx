@@ -11,6 +11,7 @@ import EmptyState from "@/components/ui/empty-state";
 import StoreChatLiveLayout from "@/components/store/store-chat-live-layout";
 import StoreChatConsentGate from "@/components/store/store-chat-consent-gate";
 import StoreAgreedConsentPanel from "@/components/store/store-agreed-consent-panel";
+import StoreChannelConnectModal from "@/components/store/store-channel-connect-modal";
 
 import type { MessageWithAttachments } from "@/types/chat";
 import type { StoreChatsPageProps } from "@/types/pages";
@@ -99,7 +100,17 @@ const StoreChats = async ({ searchParams }: StoreChatsPageProps) => {
       <PageHeader
         title="고객 대화"
         description="외국인 고객과 실시간으로 대화합니다."
-        action={<StoreAgreedConsentPanel consents={agreedConsents} />}
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <StoreChannelConnectModal
+              connections={channelConnections ?? []}
+              lineWebhookUrl={lineWebhookUrl}
+              lineDiagnostic={lineDiagnostic}
+              translationEnabled={translationEnabled}
+            />
+            <StoreAgreedConsentPanel consents={agreedConsents} />
+          </div>
+        }
       />
       <PageBody>
         <StoreChatLiveLayout
@@ -110,10 +121,7 @@ const StoreChats = async ({ searchParams }: StoreChatsPageProps) => {
           q={q}
           channel={channel}
           reservationLinks={reservationLinks ?? []}
-          channelConnections={channelConnections ?? []}
           translationEnabled={translationEnabled}
-          lineWebhookUrl={lineWebhookUrl}
-          lineDiagnostic={lineDiagnostic}
         />
       </PageBody>
     </>

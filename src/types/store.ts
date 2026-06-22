@@ -1,5 +1,5 @@
 import type { StoreDocumentWithUrl } from "@/lib/store-documents";
-import type { Conversation, ReservationLink, Store, StoreChannelConnection } from "@/types/database";
+import type { Conversation, ReservationLink, Store } from "@/types/database";
 import type { MessageWithAttachments } from "@/types/chat";
 import type { DocumentType, PlanCode } from "@/lib/constants";
 
@@ -33,10 +33,8 @@ export interface LineConnectionDiagnostic {
 
 export interface StoreChatLiveLayoutProps extends StoreChatLogLayoutProps {
   storeId: string;
-  channelConnections: StoreChannelConnection[];
+  /** 번역 API 설정 여부 — 가이드·입력 placeholder */
   translationEnabled: boolean;
-  lineWebhookUrl: string;
-  lineDiagnostic: LineConnectionDiagnostic;
 }
 
 export interface StoreInfoFormProps {

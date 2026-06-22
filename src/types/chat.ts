@@ -47,4 +47,6 @@ export interface ChatLogLayoutProps {
   listPlaceholder?: string;
   /** 하단 입력 — 없으면 읽기 전용 */
   composer?: ReactNode;
+  /** 선택된 대화 헤더 우측 액션 (종료 등) */
+  conversationActions?: ReactNode;
 }
