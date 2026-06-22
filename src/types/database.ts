@@ -167,6 +167,8 @@ export interface StoreChannelConnection extends Timestamps {
   connected_at: string | null;
   error_message: string | null;
   credentials?: Json | null;
+  last_webhook_at?: string | null;
+  last_webhook_summary?: string | null;
 }
 
 type TableShape<Row> = {

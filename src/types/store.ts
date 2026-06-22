@@ -26,6 +26,8 @@ export interface LineConnectionDiagnostic {
   channelId: string | null;
   hasCredentials: boolean;
   errorMessage: string | null;
+  lastWebhookAt?: string | null;
+  lastWebhookSummary?: string | null;
   hints: string[];
 }
 

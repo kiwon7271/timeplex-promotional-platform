@@ -105,6 +105,7 @@ npm run dev
 | `0013_inquiry_category.sql` | 문의 구분 |
 | `0014_chat_foundation.sql` | 고객 언어, 메신저 연결, Realtime |
 | `0015_line_integration.sql` | LINE external ID, credentials |
+| `0016_line_webhook_tracking.sql` | Webhook 수신 추적 |
 
 3. 기본 시드: `supabase/seed.sql`
 4. 통합관리자: `npm run create-admin`

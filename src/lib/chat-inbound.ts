@@ -8,6 +8,8 @@ export const receiveCustomerMessage = async (params: {
   conversationId: string;
   body: string;
   externalMessageId?: string;
+  /** Webhook — OpenAI 지연 방지, 메시지 우선 저장 */
+  skipTranslation?: boolean;
 }) => {
   const supabase = createServiceClient();
   const trimmed = params.body.trim();
@@ -33,10 +35,20 @@ export const receiveCustomerMessage = async (params: {
     return { ok: false as const, message: "대화를 찾을 수 없습니다." };
   }
 
-  const { customerLocale, body, translated_body } = await translateCustomerInbound(
-    trimmed,
-    conversation.customer_locale,
-  );
+  let customerLocale: string;
+  let body: string;
+  let translated_body: string | null;
+
+  if (params.skipTranslation) {
+    customerLocale = conversation.customer_locale ?? "ko";
+    body = trimmed;
+    translated_body = null;
+  } else {
+    const translated = await translateCustomerInbound(trimmed, conversation.customer_locale);
+    customerLocale = translated.customerLocale;
+    body = translated.body;
+    translated_body = translated.translated_body;
+  }
 
   const updates: { last_message_at: string; customer_locale?: string } = {
     last_message_at: new Date().toISOString(),

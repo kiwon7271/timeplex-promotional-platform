@@ -155,6 +155,8 @@ create table if not exists public.store_channel_connections (
   connected_at timestamptz,
   error_message text,
   credentials jsonb,
+  last_webhook_at timestamptz,
+  last_webhook_summary text,
   created_at timestamptz not null default now(),
   unique (store_id, channel)
 );

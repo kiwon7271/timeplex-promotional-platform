@@ -148,9 +148,7 @@ const StoreLineConnectCard = ({
             </Button>
           </div>
           <Text.Body3 className="text-[12px] leading-relaxed text-gray-600">
-            LINE Developers → Messaging API → Webhook URL 등록 → Verify → Use webhook ON
-            <br />
-            Verify가 실패하면 Timeplex에 저장한 Channel ID와 Secret이 LINE Console과 일치하는지 확인하세요.
+            LINE Developers → Messaging API → Webhook URL 등록 → **Timeplex에서 Secret·Token 저장 후** Verify → Use webhook ON
           </Text.Body3>
         </div>
 
@@ -161,7 +159,7 @@ const StoreLineConnectCard = ({
           </Text.Body3>
         ) : (
           <Text.Body3 className="text-[12px] leading-relaxed text-gray-600">
-            ② 「라인 연결하기」에서 Channel ID, Secret, Access Token을 입력하세요.
+            ② 「라인 연결하기」에서 Secret·Token을 저장하세요. Channel ID가 틀려도 Verify 시 자동 보정됩니다.
           </Text.Body3>
         )}
 
