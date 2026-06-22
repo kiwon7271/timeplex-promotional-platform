@@ -11,6 +11,7 @@ import { getLocaleLabelKo } from "@/lib/locale";
 import type { ChatThreadLogProps } from "@/types/chat";
 import ChatMessageAttachments from "@/components/chat/chat-message-attachments";
 import ChatMessageLinks from "@/components/chat/chat-message-links";
+import ClientDateTime from "@/components/chat/elements/client-date-time";
 
 const SENDER_ALIGN: Record<string, "left" | "right" | "center"> = {
   CUSTOMER: "left",
@@ -19,15 +20,6 @@ const SENDER_ALIGN: Record<string, "left" | "right" | "center"> = {
 };
 
 const getAlign = (sender: string) => SENDER_ALIGN[sender] ?? "left";
-
-const formatMessageDate = (value: string) =>
-  new Date(value).toLocaleString("ko-KR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 
 const translationNoteClass =
   "w-fit max-w-full break-words rounded-md bg-white/80 px-2.5 py-1.5 text-[12px] leading-[18px] text-gray-600 ring-1 ring-gray-200/80";
@@ -143,9 +135,10 @@ const ChatThreadLog = ({
                 </p>
               ) : null}
 
-              <p className="text-[11px] leading-[16px] text-gray-500">
-                {formatMessageDate(m.created_at)}
-              </p>
+              <ClientDateTime
+                value={m.created_at}
+                className="text-[11px] leading-[16px] text-gray-500"
+              />
             </div>
           </li>
         );

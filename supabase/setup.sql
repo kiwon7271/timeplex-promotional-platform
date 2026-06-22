@@ -171,6 +171,10 @@ create unique index if not exists idx_messages_external_message_id
 create index if not exists idx_conversations_external_thread
   on public.conversations(store_id, channel, external_thread_id);
 
+create unique index if not exists idx_conversations_thread_unique
+  on public.conversations(store_id, channel, external_thread_id)
+  where external_thread_id is not null;
+
 create index if not exists idx_store_channel_line_destination
   on public.store_channel_connections(external_account_id)
   where channel = 'LINE';

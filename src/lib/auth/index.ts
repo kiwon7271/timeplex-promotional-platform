@@ -1,10 +1,11 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ROLES, type Role } from "@/lib/constants";
 import type { Profile } from "@/types/database";
 
-/** Supabase Auth + profiles 조회 — 현재 로그인 사용자 프로필 (없으면 null) */
-export const getProfile = async (): Promise<Profile | null> => {
+/** Supabase Auth + profiles — 요청당 1회만 조회 (layout·page 중복 제거) */
+export const getProfile = cache(async (): Promise<Profile | null> => {
   const supabase = createClient();
   const {
     data: { user },
@@ -15,7 +16,7 @@ export const getProfile = async (): Promise<Profile | null> => {
   const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
 
   return data;
-};
+});
 
 /** 로그인 필수 — 미인증 시 /login 리다이렉트 */
 export const requireProfile = async (): Promise<Profile> => {

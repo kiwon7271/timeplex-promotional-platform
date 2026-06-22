@@ -1,14 +1,25 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { getConversationMessages } from "@/actions/chats";
+import { fetchConversationMessagesClient } from "@/lib/chat-messages-client";
 import type { Conversation } from "@/types/database";
 import type { MessageWithAttachments } from "@/types/chat";
 
-const POLL_INTERVAL_MS = 30_000;
+/** Realtime 보조 — 구독 누락 시만 */
+const POLL_INTERVAL_MS = 15_000;
 
-/** 고객 대화 Realtime — 대화 목록·메시지 갱신 */
+const toRealtimeMessage = (row: Record<string, unknown>): MessageWithAttachments => ({
+  id: String(row.id ?? ""),
+  conversation_id: String(row.conversation_id ?? ""),
+  sender: String(row.sender ?? "CUSTOMER"),
+  body: String(row.body ?? ""),
+  translated_body: row.translated_body ? String(row.translated_body) : null,
+  external_message_id: row.external_message_id ? String(row.external_message_id) : null,
+  created_at: String(row.created_at ?? new Date().toISOString()),
+});
+
+/** 고객 대화 Realtime — 즉시 반영 + Supabase 직접 조회 */
 export const useChatRealtime = ({
   storeId,
   conversationId,
@@ -26,6 +37,11 @@ export const useChatRealtime = ({
 }) => {
   const [conversations, setConversations] = useState(initialConversations);
   const [messages, setMessages] = useState(initialMessages);
+  const conversationIdRef = useRef(conversationId);
+
+  useEffect(() => {
+    conversationIdRef.current = conversationId;
+  }, [conversationId]);
 
   useEffect(() => {
     setConversations(initialConversations);
@@ -54,24 +70,44 @@ export const useChatRealtime = ({
       const { data } = await query;
       if (data) setConversations(data);
     } catch {
-      // 네트워크·RLS 오류 시 기존 값 유지
+      // 기존 값 유지
     }
   }, [storeId, q, channel]);
 
-  const refreshMessages = useCallback(async () => {
-    if (!conversationId) return;
+  const refreshMessages = useCallback(async (targetConversationId?: string) => {
+    const activeId = targetConversationId ?? conversationIdRef.current;
+    if (!activeId) return;
 
     try {
-      const res = await getConversationMessages(conversationId);
-      if (res.ok && res.data) setMessages(res.data);
+      const data = await fetchConversationMessagesClient(activeId);
+      if (activeId === conversationIdRef.current) {
+        setMessages(data);
+      }
     } catch {
       // 기존 값 유지
     }
-  }, [conversationId]);
+  }, []);
+
+  const appendMessageIfActive = useCallback((row: Record<string, unknown>) => {
+    const activeId = conversationIdRef.current;
+    const newConversationId = String(row.conversation_id ?? "");
+    if (!activeId || newConversationId !== activeId) return;
+
+    const incoming = toRealtimeMessage(row);
+    setMessages((prev) => {
+      if (prev.some((item) => item.id === incoming.id)) return prev;
+      return [...prev, incoming];
+    });
+  }, []);
 
   useEffect(() => {
     const supabase = createClient();
-    const channelName = `store-chat-${storeId}-${conversationId ?? "list"}`;
+    const channelName = `store-chat-${storeId}`;
+
+    const onMessageInsert = (payload: { new: Record<string, unknown> }) => {
+      appendMessageIfActive(payload.new);
+      void refreshConversations();
+    };
 
     const realtimeChannel = supabase
       .channel(channelName)
@@ -86,34 +122,27 @@ export const useChatRealtime = ({
         () => {
           void refreshConversations();
         },
-      );
-
-    if (conversationId) {
-      realtimeChannel.on(
+      )
+      .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "messages",
-          filter: `conversation_id=eq.${conversationId}`,
         },
-        () => {
-          void refreshMessages();
-        },
-      );
-    }
-
-    realtimeChannel.subscribe();
+        onMessageInsert,
+      )
+      .subscribe();
 
     const pollId = window.setInterval(() => {
       void refreshConversations();
-      if (conversationId) void refreshMessages();
+      void refreshMessages();
     }, POLL_INTERVAL_MS);
 
     const onVisible = () => {
       if (document.visibilityState === "visible") {
         void refreshConversations();
-        if (conversationId) void refreshMessages();
+        void refreshMessages();
       }
     };
 
@@ -126,7 +155,7 @@ export const useChatRealtime = ({
       document.removeEventListener("visibilitychange", onVisible);
       void supabase.removeChannel(realtimeChannel);
     };
-  }, [storeId, conversationId, refreshConversations, refreshMessages]);
+  }, [storeId, appendMessageIfActive, refreshConversations, refreshMessages]);
 
-  return { conversations, messages };
+  return { conversations, messages, refreshMessages };
 };

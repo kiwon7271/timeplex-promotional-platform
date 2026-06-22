@@ -7,6 +7,7 @@ import type { ChatLogLayoutProps } from "@/types/chat";
 import Badge from "@/components/ui/badge";
 import EmptyState from "@/components/ui/empty-state";
 import ChatThreadLog from "@/components/chat/chat-thread-log";
+import ClientDateTime from "@/components/chat/elements/client-date-time";
 
 const panelHeaderClass =
   "flex h-12 shrink-0 items-center gap-2 border-b border-gray-200 px-4";
@@ -81,11 +82,14 @@ const ChatLogLayout = ({
                           </p>
                           <div className="mt-1 flex flex-wrap items-center gap-1.5">
                             <Badge value={c.channel} />
-                            <span className="text-[11px] text-gray-500">
-                              {c.last_message_at
-                                ? new Date(c.last_message_at).toLocaleString("ko-KR")
-                                : "-"}
-                            </span>
+                            {c.last_message_at ? (
+                              <ClientDateTime
+                                value={c.last_message_at}
+                                className="text-[11px] text-gray-500"
+                              />
+                            ) : (
+                              <span className="text-[11px] text-gray-500">-</span>
+                            )}
                           </div>
                         </button>
                       </li>

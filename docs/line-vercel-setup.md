@@ -68,12 +68,16 @@ Vercel Dashboard → Settings → Environment Variables:
 
 | 증상 | 확인 |
 |------|------|
-| Verify 실패 (배포 후) | Timeplex `/store/chats`에서 Channel ID·Secret 재저장 → LINE Console Verify 재시도 |
-| Verify 성공했는데 메시지 없음 (구버전) | 예전에는 DB 미매칭도 200 반환 — **최신 코드 배포 후 Verify 재실행** |
-| 401 invalid signature | Channel secret 재입력 |
-| DB에 안 쌓임 | Vercel `SUPABASE_SERVICE_ROLE_KEY` + **0015 SQL** 적용 |
-| `column external_thread_id does not exist` | **0015_line_integration.sql** 미적용 |
-| 답장만 안 감 | Access token 만료·권한 확인 |
+| `last_webhook_at` **항상 NULL** | ① **0016 SQL** 적용 ② Vercel **Deployment Protection** OFF ③ 아래 버그 수정본 Redeploy (백그라운드 void 처리 금지) |
+| Verify 실패 (503) | Timeplex `/store/chats`에서 Secret·Token 재저장 |
+| Verify 성공, 메시지 없음 | LINE **친구 추가** 후 1:1 메시지 / Webhook **Redelivery** 로그 |
+| `record activity failed` in Vercel Logs | **0016** 미적용 — `last_webhook_at` 컬럼 없음 |
+
+### Vercel Deployment Protection (중요)
+
+Vercel Dashboard → Settings → **Deployment Protection** 이 켜져 있으면  
+LINE Webhook POST가 **로그인 페이지(401/307)** 로 막혀 DB에 아무것도 안 쌓입니다.  
+**Production Deployment Protection을 끄거나** Webhook URL 예외 설정이 필요합니다.
 
 ### 브라우저로 Webhook URL 확인
 

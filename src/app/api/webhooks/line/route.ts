@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { handleLineWebhook } from "@/lib/messenger/line/handle-webhook";
-import { resolveLineWebhookConnection } from "@/lib/messenger/line/connection-lookup";
+import {
+  recordLineWebhookActivity,
+  resolveLineWebhookConnection,
+} from "@/lib/messenger/line/connection-lookup";
 import type { LineWebhookBody } from "@/lib/messenger/line/types";
 import { verifyLineSignature } from "@/lib/messenger/line/verify-signature";
 
@@ -16,7 +19,7 @@ export async function GET() {
   });
 }
 
-/** LINE Messaging API Webhook — 서명 확인 후 즉시 200, 처리는 백그라운드 */
+/** LINE Messaging API Webhook */
 export async function POST(request: Request) {
   const rawBody = await request.text();
   const signature = request.headers.get("x-line-signature");
@@ -33,7 +36,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "destination required" }, { status: 400 });
   }
 
-  const isVerifyRequest = (payload.events ?? []).length === 0;
+  const eventCount = payload.events?.length ?? 0;
+  const isVerifyRequest = eventCount === 0;
 
   const connection = await resolveLineWebhookConnection({
     destination,
@@ -64,24 +68,38 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "invalid signature" }, { status: 401 });
   }
 
-  // LINE은 빠른 200 응답 필요 — DB 저장은 백그라운드
-  void handleLineWebhook(payload)
-    .then((result) => {
-      if (!result.ok) {
-        console.error("[LINE webhook] background handle failed:", result.message);
-        return;
-      }
-      console.info(
-        "[LINE webhook] background ok destination=%s processed=%d skipped=%d",
-        destination,
-        result.processed,
-        result.skipped,
-      );
-    })
-    .catch((error) => {
-      const message = error instanceof Error ? error.message : "internal error";
-      console.error("[LINE webhook] background unhandled error:", message);
-    });
+  // Vercel은 응답 후 백그라운드 작업을 종료함 — 반드시 await 후 200 반환
+  await recordLineWebhookActivity(
+    destination,
+    `POST 수신 (events=${eventCount})`,
+    false,
+  );
 
-  return NextResponse.json({ ok: true });
+  try {
+    const result = await handleLineWebhook(payload);
+
+    if (!result.ok) {
+      console.error("[LINE webhook] handle failed:", result.message);
+      // LINE 재전송 폭주 방지 — 처리 실패해도 200 (오류는 DB·로그에 기록됨)
+      return NextResponse.json({ ok: true, warning: result.message });
+    }
+
+    console.info(
+      "[LINE webhook] ok destination=%s processed=%d skipped=%d",
+      destination,
+      result.processed,
+      result.skipped,
+    );
+
+    return NextResponse.json({
+      ok: true,
+      processed: result.processed,
+      skipped: result.skipped,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "internal error";
+    console.error("[LINE webhook] unhandled error:", message);
+    await recordLineWebhookActivity(destination, `처리 오류: ${message}`, true);
+    return NextResponse.json({ ok: true, warning: message });
+  }
 }

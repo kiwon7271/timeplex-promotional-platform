@@ -31,7 +31,7 @@ const StoreChatLiveLayout = ({
 }: StoreChatLiveLayoutProps) => {
   const router = useRouter();
 
-  const { conversations, messages } = useChatRealtime({
+  const { conversations, messages, refreshMessages } = useChatRealtime({
     storeId,
     conversationId,
     initialConversations,
@@ -118,6 +118,7 @@ const StoreChatLiveLayout = ({
               conversationId={conversationId}
               reservationLinks={reservationLinks}
               translationEnabled={translationEnabled}
+              onSentMessage={() => void refreshMessages()}
             />
           ) : undefined
         }

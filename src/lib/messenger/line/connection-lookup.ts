@@ -258,16 +258,25 @@ export const recordLineWebhookActivity = async (
   summary: string,
   hasError: boolean,
 ) => {
-  const supabase = createServiceClient();
-  await supabase
-    .from("store_channel_connections")
-    .update({
-      last_webhook_at: new Date().toISOString(),
-      last_webhook_summary: summary.slice(0, 500),
-      error_message: hasError ? summary.slice(0, 500) : null,
-    })
-    .eq("channel", "LINE")
-    .eq("external_account_id", destination);
+  try {
+    const supabase = createServiceClient();
+    const { error } = await supabase
+      .from("store_channel_connections")
+      .update({
+        last_webhook_at: new Date().toISOString(),
+        last_webhook_summary: summary.slice(0, 500),
+        error_message: hasError ? summary.slice(0, 500) : null,
+      })
+      .eq("channel", "LINE")
+      .eq("external_account_id", destination);
+
+    if (error) {
+      console.error("[LINE webhook] record activity failed:", error.message);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown";
+    console.error("[LINE webhook] record activity exception:", message);
+  }
 };
 
 /** Webhook 처리 성공 시 오류 메시지 초기화 */

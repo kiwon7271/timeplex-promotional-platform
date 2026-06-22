@@ -2,7 +2,7 @@ import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/service";
 
-/** 채널별 고객 대화 조회·생성 */
+/** 채널별 고객 대화 조회·생성 — LINE userId 기준 1개만 */
 export const findOrCreateCustomerConversation = async (params: {
   storeId: string;
   channel: string;
@@ -10,23 +10,27 @@ export const findOrCreateCustomerConversation = async (params: {
   customerName?: string | null;
 }) => {
   const supabase = createServiceClient();
+  const threadId = params.externalThreadId.trim();
 
-  const { data: existing } = await supabase
+  const { data: existingRows } = await supabase
     .from("conversations")
     .select("id")
     .eq("store_id", params.storeId)
     .eq("channel", params.channel)
-    .eq("external_thread_id", params.externalThreadId)
-    .maybeSingle();
+    .eq("external_thread_id", threadId)
+    .order("created_at", { ascending: true })
+    .limit(1);
 
-  if (existing) return { ok: true as const, conversationId: existing.id };
+  if (existingRows?.[0]) {
+    return { ok: true as const, conversationId: existingRows[0].id };
+  }
 
   const { data: created, error } = await supabase
     .from("conversations")
     .insert({
       store_id: params.storeId,
       channel: params.channel,
-      external_thread_id: params.externalThreadId,
+      external_thread_id: threadId,
       customer_name: params.customerName?.trim() || "고객",
       status: "OPEN",
       last_message_at: new Date().toISOString(),
@@ -34,14 +38,29 @@ export const findOrCreateCustomerConversation = async (params: {
     .select("id")
     .single();
 
-  if (error || !created) {
-    return {
-      ok: false as const,
-      message: error?.message ?? "대화 생성 실패",
-    };
+  if (!error && created) {
+    return { ok: true as const, conversationId: created.id };
   }
 
-  return { ok: true as const, conversationId: created.id };
+  // 동시 Webhook — unique 충돌 시 기존 방 재조회
+  if (error?.code === "23505") {
+    const { data: retryRows } = await supabase
+      .from("conversations")
+      .select("id")
+      .eq("store_id", params.storeId)
+      .eq("channel", params.channel)
+      .eq("external_thread_id", threadId)
+      .limit(1);
+
+    if (retryRows?.[0]) {
+      return { ok: true as const, conversationId: retryRows[0].id };
+    }
+  }
+
+  return {
+    ok: false as const,
+    message: error?.message ?? "대화 생성 실패",
+  };
 };
 
 /** 고객 표시명 갱신 (비어 있거나 기본값일 때) */

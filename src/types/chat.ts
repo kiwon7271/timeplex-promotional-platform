@@ -22,6 +22,8 @@ export interface MessageComposerProps {
   reservationLinks: ReservationLink[];
   /** 번역 API 설정 여부 — placeholder 안내용 */
   translationEnabled?: boolean;
+  /** 전송 직후 메시지 목록 갱신 */
+  onSentMessage?: () => void;
 }
 
 export interface ChatThreadLogProps {

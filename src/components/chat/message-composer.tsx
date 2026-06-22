@@ -33,6 +33,7 @@ const MessageComposer = ({
   conversationId,
   reservationLinks,
   translationEnabled = false,
+  onSentMessage,
 }: MessageComposerProps) => {
   const { openAlert } = useDialog();
   const formRef = useRef<HTMLFormElement>(null);
@@ -99,6 +100,7 @@ const MessageComposer = ({
       formRef.current?.reset();
       setFileName(null);
       setSelectedLink(null);
+      onSentMessage?.();
       focusMessageInput();
     } finally {
       submittingRef.current = false;

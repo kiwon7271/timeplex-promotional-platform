@@ -49,6 +49,8 @@ export const handleLineWebhook = async (
     return { ok: true, processed: 0, skipped: 0, skipReasons: [] };
   }
 
+  // POST 수신은 route.ts에서 이미 기록 — 여기서는 처리 결과만 갱신
+
   let processed = 0;
   let skipped = 0;
   const skipReasons: string[] = [];
