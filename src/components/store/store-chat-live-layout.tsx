@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { IconFilter, IconSearch } from "@tabler/icons-react";
+import { onBackfillConversationTranslations, onSyncLineCustomerProfile } from "@/actions/chats";
 import { CHANNEL_LABEL_KO, CHANNELS } from "@/lib/constants";
 import { getControlIconSize, ICON_SIZE, ICON_STROKE, toolbarRowClass } from "@/lib/icon-size";
 import { useChatRealtime } from "@/hooks/use-chat-realtime";
@@ -27,7 +29,14 @@ const StoreChatLiveLayout = ({
 }: StoreChatLiveLayoutProps) => {
   const router = useRouter();
 
-  const { conversations, messages, refreshMessages } = useChatRealtime({
+  const {
+    conversations,
+    messages,
+    refreshMessages,
+    refreshConversations,
+    appendOptimisticStoreMessage,
+    removeOptimisticMessage,
+  } = useChatRealtime({
     storeId,
     conversationId,
     initialConversations,
@@ -55,6 +64,19 @@ const StoreChatLiveLayout = ({
   };
 
   const selectedConversation = conversations.find((item) => item.id === conversationId);
+
+  // 번역·LINE 프로필 누락 보강
+  useEffect(() => {
+    if (!conversationId) return;
+
+    void Promise.all([
+      onBackfillConversationTranslations(conversationId),
+      onSyncLineCustomerProfile(conversationId),
+    ]).then(() => {
+      void refreshMessages();
+      void refreshConversations();
+    });
+  }, [conversationId, refreshMessages, refreshConversations]);
 
   return (
     <ChatLogLayout
@@ -117,6 +139,8 @@ const StoreChatLiveLayout = ({
               conversationId={conversationId}
               reservationLinks={reservationLinks}
               translationEnabled={translationEnabled}
+              onOptimisticSend={appendOptimisticStoreMessage}
+              onOptimisticRollback={removeOptimisticMessage}
               onSentMessage={() => void refreshMessages()}
             />
           ) : undefined

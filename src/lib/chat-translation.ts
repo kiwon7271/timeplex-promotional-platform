@@ -2,7 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { STORE_LOCALE } from "@/lib/locale";
-import { detectLocale, translateText } from "@/lib/translate";
+import { detectLocale, translateInboundForStore, translateText } from "@/lib/translate";
 
 /** 매장 → 고객 발신 번역 (한국어 원문 + 고객 언어) */
 export const translateStoreOutbound = async (
@@ -27,12 +27,24 @@ export const translateCustomerInbound = async (
   body: string,
   existingLocale: string | null,
 ) => {
+  const needsDetect = !existingLocale || existingLocale === STORE_LOCALE;
+
+  if (needsDetect) {
+    const combined = await translateInboundForStore(body);
+    if (combined) {
+      return {
+        customerLocale: combined.customerLocale,
+        body,
+        translated_body: combined.translated_body,
+      };
+    }
+  }
+
   let customerLocale = existingLocale;
 
   if (!customerLocale) {
     customerLocale = (await detectLocale(body)) ?? "en";
   } else if (customerLocale === STORE_LOCALE) {
-    // Webhook fast-path에서 ko로 잘못 저장된 경우 재감지
     const detected = await detectLocale(body);
     if (detected && detected !== STORE_LOCALE) {
       customerLocale = detected;

@@ -89,3 +89,33 @@ export const detectLocale = async (text: string): Promise<string | null> => {
   const code = result.toLowerCase().replace(/[^a-z-]/g, "").slice(0, 5);
   return code || null;
 };
+
+/** 고객 → 매장: 언어 감지 + 한국어 번역 (API 1회) */
+export const translateInboundForStore = async (
+  text: string,
+): Promise<{ customerLocale: string; translated_body: string | null } | null> => {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  const result = await callOpenAI([
+    {
+      role: "system",
+      content:
+        'Detect the customer message language (ISO 639-1, e.g. en, ja). Translate it to Korean for the store owner. Reply with ONLY minified JSON: {"locale":"en","translation":"한국어 번역문"}',
+    },
+    { role: "user", content: trimmed },
+  ]);
+
+  if (!result) return null;
+
+  try {
+    const parsed = JSON.parse(result) as { locale?: string; translation?: string };
+    const customerLocale =
+      parsed.locale?.toLowerCase().replace(/[^a-z-]/g, "").slice(0, 5) || "en";
+    const translated_body = parsed.translation?.trim() || null;
+    return { customerLocale, translated_body };
+  } catch {
+    console.error("[translate] inbound JSON parse failed:", result.slice(0, 200));
+    return null;
+  }
+};

@@ -22,8 +22,12 @@ export interface MessageComposerProps {
   reservationLinks: ReservationLink[];
   /** 번역 API 설정 여부 — placeholder 안내용 */
   translationEnabled?: boolean;
-  /** 전송 직후 메시지 목록 갱신 */
+  /** 전송 직후 메시지 목록 갱신 (첨부·링크 등) */
   onSentMessage?: () => void;
+  /** 텍스트 전송 — 즉시 UI 반영 */
+  onOptimisticSend?: (body: string) => string;
+  /** 전송 실패 — 낙관적 메시지 제거 */
+  onOptimisticRollback?: (tempId: string) => void;
 }
 
 export interface ChatThreadLogProps {

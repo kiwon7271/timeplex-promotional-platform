@@ -96,8 +96,35 @@ export const useChatRealtime = ({
     const incoming = toRealtimeMessage(row);
     setMessages((prev) => {
       if (prev.some((item) => item.id === incoming.id)) return prev;
-      return [...prev, incoming];
+      // Realtime 수신 — 낙관적(pending) 메시지 제거
+      const withoutPending = prev.filter((item) => !item.id.startsWith("pending-"));
+      return [...withoutPending, incoming];
     });
+  }, []);
+
+  const appendOptimisticStoreMessage = useCallback((body: string) => {
+    const activeId = conversationIdRef.current;
+    const tempId = `pending-${Date.now()}`;
+    if (!activeId) return tempId;
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: tempId,
+        conversation_id: activeId,
+        sender: "STORE",
+        body,
+        translated_body: null,
+        external_message_id: null,
+        created_at: new Date().toISOString(),
+      },
+    ]);
+
+    return tempId;
+  }, []);
+
+  const removeOptimisticMessage = useCallback((tempId: string) => {
+    setMessages((prev) => prev.filter((item) => item.id !== tempId));
   }, []);
 
   const patchMessageIfActive = useCallback((row: Record<string, unknown>) => {
@@ -186,5 +213,12 @@ export const useChatRealtime = ({
     };
   }, [storeId, appendMessageIfActive, patchMessageIfActive, refreshConversations, refreshMessages]);
 
-  return { conversations, messages, refreshMessages };
+  return {
+    conversations,
+    messages,
+    refreshMessages,
+    refreshConversations,
+    appendOptimisticStoreMessage,
+    removeOptimisticMessage,
+  };
 };

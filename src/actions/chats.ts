@@ -11,6 +11,8 @@ import { BUCKETS } from "@/lib/constants";
 import { validateImageFile, safeFileName, resolveUploadFileName } from "@/lib/upload";
 import type { ActionResult } from "@/types/action-result";
 import type { MessageWithAttachments } from "@/types/chat";
+import { backfillConversationTranslations } from "@/lib/chat-inbound";
+import { syncLineCustomerProfile } from "@/lib/messenger/line/sync-customer-profile";
 
 export type ConversationMessagesResult = ActionResult & {
   data?: MessageWithAttachments[];
@@ -50,13 +52,40 @@ export const getConversationMessages = async (
   return { ok: true, data: messages };
 };
 
+/** 화면 진입 시 — 번역 누락된 고객 메시지 보강 */
+export const onBackfillConversationTranslations = async (
+  conversationId: string,
+): Promise<ActionResult> => {
+  const profile = await requireStoreUser();
+  if (!profile.store_id) return { ok: false, message: "소속 매장이 없습니다." };
+
+  await backfillConversationTranslations({
+    conversationId,
+    storeId: profile.store_id,
+  });
+
+  return { ok: true };
+};
+
+/** LINE displayName — 기본값(고객)일 때 프로필 동기화 */
+export const onSyncLineCustomerProfile = async (
+  conversationId: string,
+): Promise<ActionResult> => {
+  const profile = await requireStoreUser();
+  if (!profile.store_id) return { ok: false, message: "소속 매장이 없습니다." };
+
+  await syncLineCustomerProfile({
+    conversationId,
+    storeId: profile.store_id,
+  });
+
+  return { ok: true };
+};
+
 /** Supabase: messages INSERT + Storage upload + conversations UPDATE */
 export const onSendMessage = async (formData: FormData): Promise<ActionResult> => {
   const profile = await requireStoreUser();
   if (!profile.store_id) return { ok: false, message: "소속 매장이 없습니다." };
-
-  const consented = await hasStoreChatConsent(profile.store_id);
-  if (!consented) return { ok: false, message: "동의/고지 약관에 동의한 후 메시지를 전송할 수 있습니다." };
 
   const conversationId = String(formData.get("conversation_id") ?? "");
   const body = String(formData.get("body") ?? "").trim();
@@ -71,13 +100,20 @@ export const onSendMessage = async (formData: FormData): Promise<ActionResult> =
 
   const supabase = createClient();
 
-  const { data: conversation } = await supabase
-    .from("conversations")
-    .select("store_id, customer_locale, channel, external_thread_id")
-    .eq("id", conversationId)
-    .single();
+  const [consented, { data: conversation, error: convError }] = await Promise.all([
+    hasStoreChatConsent(profile.store_id),
+    supabase
+      .from("conversations")
+      .select("store_id, customer_locale, channel, external_thread_id")
+      .eq("id", conversationId)
+      .single(),
+  ]);
 
-  if (!conversation || conversation.store_id !== profile.store_id) {
+  if (!consented) {
+    return { ok: false, message: "동의/고지 약관에 동의한 후 메시지를 전송할 수 있습니다." };
+  }
+
+  if (convError || !conversation || conversation.store_id !== profile.store_id) {
     return { ok: false, message: "대화를 찾을 수 없습니다." };
   }
 
@@ -89,11 +125,10 @@ export const onSendMessage = async (formData: FormData): Promise<ActionResult> =
 
   let translatedBody: string | null = null;
   if (body) {
-    const customerLocale = await resolveCustomerLocale(
-      supabase,
-      conversationId,
-      conversation.customer_locale,
-    );
+    const customerLocale =
+      conversation.customer_locale && conversation.customer_locale !== "ko"
+        ? conversation.customer_locale
+        : await resolveCustomerLocale(supabase, conversationId, conversation.customer_locale);
     const translated = await translateStoreOutbound(body, customerLocale);
     translatedBody = translated.translated_body;
   }
@@ -171,7 +206,6 @@ export const onSendMessage = async (formData: FormData): Promise<ActionResult> =
     }
   }
 
-  revalidatePath("/store/chats");
   return { ok: true };
 };
 

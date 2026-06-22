@@ -34,6 +34,8 @@ const MessageComposer = ({
   reservationLinks,
   translationEnabled = false,
   onSentMessage,
+  onOptimisticSend,
+  onOptimisticRollback,
 }: MessageComposerProps) => {
   const { openAlert } = useDialog();
   const formRef = useRef<HTMLFormElement>(null);
@@ -87,9 +89,25 @@ const MessageComposer = ({
     submittingRef.current = true;
     setSending(true);
 
+    const bodyText = textareaRef.current?.value.trim() ?? "";
+    const hasAttachFile = !!(file && file.size > 0);
+    const isTextOnly = !!bodyText && !hasAttachFile && !selectedLink;
+    let optimisticId: string | undefined;
+
+    if (isTextOnly && onOptimisticSend) {
+      optimisticId = onOptimisticSend(bodyText);
+      formRef.current?.reset();
+      setFileName(null);
+      setSelectedLink(null);
+      focusMessageInput();
+    }
+
     try {
       const res = await onSendMessage(formData);
       if (!res.ok) {
+        if (optimisticId && onOptimisticRollback) {
+          onOptimisticRollback(optimisticId);
+        }
         await openAlert({
           title: "전송 실패",
           message: res.message ?? "전송 실패",
@@ -97,11 +115,13 @@ const MessageComposer = ({
         return;
       }
 
-      formRef.current?.reset();
-      setFileName(null);
-      setSelectedLink(null);
-      onSentMessage?.();
-      focusMessageInput();
+      if (!isTextOnly) {
+        formRef.current?.reset();
+        setFileName(null);
+        setSelectedLink(null);
+        onSentMessage?.();
+        focusMessageInput();
+      }
     } finally {
       submittingRef.current = false;
       setSending(false);

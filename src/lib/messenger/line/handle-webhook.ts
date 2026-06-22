@@ -4,10 +4,7 @@ import {
   findOrCreateCustomerConversation,
   updateConversationCustomerName,
 } from "@/lib/chat-conversation";
-import {
-  enrichCustomerMessageTranslation,
-  receiveCustomerMessage,
-} from "@/lib/chat-inbound";
+import { receiveCustomerMessage } from "@/lib/chat-inbound";
 import {
   clearLineWebhookError,
   findLineConnectionByDestination,
@@ -74,10 +71,16 @@ export const handleLineWebhook = async (
       continue;
     }
 
+    const lineProfile = await fetchLineUserProfile(
+      lineUserId,
+      connection.credentials.channel_access_token,
+    );
+
     const conversationResult = await findOrCreateCustomerConversation({
       storeId: connection.storeId,
       channel: "LINE",
       externalThreadId: lineUserId,
+      customerName: lineProfile?.displayName,
     });
 
     if (!conversationResult.ok) {
@@ -90,7 +93,6 @@ export const handleLineWebhook = async (
       conversationId: conversationResult.conversationId,
       body: parsed.body,
       externalMessageId: parsed.externalMessageId,
-      skipTranslation: true,
     });
 
     if (!messageResult.ok) {
@@ -99,34 +101,16 @@ export const handleLineWebhook = async (
       continue;
     }
 
-    if (
-      !messageResult.duplicate &&
-      messageResult.messageId &&
-      parsed.body.trim()
-    ) {
-      void enrichCustomerMessageTranslation({
-        messageId: messageResult.messageId,
-        conversationId: conversationResult.conversationId,
-        body: parsed.body,
-        existingLocale: messageResult.existingLocale ?? null,
-      });
-    }
-
     if (!messageResult.duplicate) {
       processed += 1;
     }
 
-    // 프로필 조회는 메시지 저장 후 — Webhook 지연 방지
-    void fetchLineUserProfile(lineUserId, connection.credentials.channel_access_token).then(
-      (profile) => {
-        if (profile?.displayName) {
-          void updateConversationCustomerName(
-            conversationResult.conversationId,
-            profile.displayName,
-          );
-        }
-      },
-    );
+    if (lineProfile?.displayName) {
+      await updateConversationCustomerName(
+        conversationResult.conversationId,
+        lineProfile.displayName,
+      );
+    }
   }
 
   const summary = errors.length
