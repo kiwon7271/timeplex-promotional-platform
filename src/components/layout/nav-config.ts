@@ -1,8 +1,9 @@
 import type { NavIconName } from "@/components/layout/nav-icon";
+import type { NavItem } from "@/types/layout";
 
 export type { NavItem } from "@/types/layout";
 
-export const ADMIN_NAV = [
+export const ADMIN_NAV: NavItem[] = [
   { href: "/admin", label: "대시보드", icon: "home" as NavIconName },
   { href: "/admin/stores", label: "매장 관리", icon: "store" as NavIconName },
   { href: "/admin/store-admissions", label: "입점관리", icon: "application" as NavIconName, badge: "pendingApplications" },
@@ -14,7 +15,7 @@ export const ADMIN_NAV = [
   { href: "/admin/settings", label: "설정", icon: "settings" as NavIconName },
 ];
 
-export const STORE_NAV = [
+export const STORE_NAV: NavItem[] = [
   { href: "/store", label: "대시보드", icon: "home" as NavIconName },
   { href: "/store/info", label: "매장 정보", icon: "info" as NavIconName },
   { href: "/store/staff", label: "직원 관리", icon: "staff" as NavIconName },

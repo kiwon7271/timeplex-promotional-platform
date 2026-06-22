@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 import { cn } from "@/lib/cn";
 import { normalizeUploadFileName } from "@/lib/upload";
 import type { MessageAttachmentPreview } from "@/types/chat";
@@ -27,9 +29,12 @@ const ChatMessageAttachments = ({
           <div key={key} className={cn("space-y-1", align === "right" && "text-right")}>
             {attachment.url ? (
               <a href={attachment.url} target="_blank" rel="noreferrer" className="inline-block max-w-full">
-                <img
+                <Image
                   src={attachment.url}
                   alt={label}
+                  width={800}
+                  height={600}
+                  unoptimized
                   className="max-h-64 max-w-full rounded-lg border border-gray-200 object-contain"
                   onLoad={onMediaLoad}
                 />
