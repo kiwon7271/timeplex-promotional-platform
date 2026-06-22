@@ -36,3 +36,48 @@ export const sendLinePushText = async (params: {
     return { ok: false as const, message };
   }
 };
+
+/** LINE Push Message — 이미지 발신 (HTTPS URL) */
+export const sendLinePushImage = async (params: {
+  accessToken: string;
+  lineUserId: string;
+  imageUrl: string;
+}) => {
+  const url = params.imageUrl.trim();
+  if (!url) {
+    return { ok: false as const, message: "전송할 이미지 URL이 없습니다." };
+  }
+
+  try {
+    const response = await fetch("https://api.line.me/v2/bot/message/push", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${params.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        to: params.lineUserId,
+        messages: [
+          {
+            type: "image",
+            originalContentUrl: url,
+            previewImageUrl: url,
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const detail = await response.text();
+      return {
+        ok: false as const,
+        message: `LINE 이미지 발신 실패 (${response.status}): ${detail.slice(0, 200)}`,
+      };
+    }
+
+    return { ok: true as const };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "LINE 이미지 발신 오류";
+    return { ok: false as const, message };
+  }
+};

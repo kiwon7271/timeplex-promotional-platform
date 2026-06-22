@@ -157,12 +157,19 @@ export const onSendMessage = async (formData: FormData): Promise<ActionResult> =
       .from(BUCKETS.CHAT_ATTACHMENTS)
       .upload(path, file!, { contentType: file!.type });
 
-    if (!uploadError) {
-      await supabase.from("message_attachments").insert({
-        message_id: message.id,
-        file_path: path,
-        file_name: displayName,
-      });
+    if (uploadError) {
+      console.error("[send message] upload failed:", uploadError.message);
+      return { ok: false, message: `이미지 업로드 실패: ${uploadError.message}` };
+    }
+
+    const { error: attachError } = await supabase.from("message_attachments").insert({
+      message_id: message.id,
+      file_path: path,
+      file_name: displayName,
+    });
+
+    if (attachError) {
+      return { ok: false, message: attachError.message };
     }
   }
 
@@ -191,9 +198,10 @@ export const onSendMessage = async (formData: FormData): Promise<ActionResult> =
     .update({ last_message_at: new Date().toISOString() })
     .eq("id", conversationId);
 
-  if (conversation.channel === "LINE" && body) {
+  if (conversation.channel === "LINE") {
     const dispatchResult = await dispatchOutboundMessage({
       conversationId,
+      messageId: message.id,
       body: messageBody,
       translatedBody: translatedBody,
     });

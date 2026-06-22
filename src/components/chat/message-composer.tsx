@@ -3,7 +3,7 @@
 import { useRef, useState, type KeyboardEvent } from "react";
 import { IconLink, IconPaperclip, IconSend, IconX } from "@tabler/icons-react";
 import { onSendMessage } from "@/actions/chats";
-import { validateImageFile, normalizeUploadFileName, appendDisplayFileName } from "@/lib/upload";
+import { validateImageFile, normalizeUploadFileName, appendDisplayFileName, IMAGE_UPLOAD_HINT } from "@/lib/upload";
 import {
   RESERVATION_PROVIDER_LABEL,
   type ReservationProvider,
@@ -19,10 +19,12 @@ import Textarea from "@/components/ui/textarea";
 import ReservationLinkPicker from "@/components/chat/reservation-link-picker";
 import { useDialog } from "@/components/providers/dialog-provider";
 
-/** 채팅 입력줄 — 버튼·textarea 동일 md 높이 */
+/** 채팅 입력줄 — 버튼과 높이 맞춤, placeholder·텍스트 좌측·세로 중앙 */
 const composerInputClass = cn(
   getControlHeightClass("md"),
-  "max-h-32 flex-1 resize-none !py-0",
+  "max-h-32 flex-1 resize-none overflow-y-auto",
+  "leading-[20px] text-left placeholder:text-left",
+  "box-border !py-[9px]",
 );
 
 const getProviderLabel = (provider: string) =>
@@ -119,9 +121,10 @@ const MessageComposer = ({
         formRef.current?.reset();
         setFileName(null);
         setSelectedLink(null);
-        onSentMessage?.();
         focusMessageInput();
       }
+
+      onSentMessage?.();
     } finally {
       submittingRef.current = false;
       setSending(false);
@@ -265,6 +268,7 @@ const MessageComposer = ({
             size="md"
             icon={<IconPaperclip size={getControlIconSize("md")} stroke={ICON_STROKE} />}
             aria-label="이미지 첨부"
+            tooltip={IMAGE_UPLOAD_HINT}
             onClick={onClickAttachButton}
             disabled={sending}
           />
@@ -284,7 +288,7 @@ const MessageComposer = ({
             size="md"
             placeholder={
               translationEnabled
-                ? "한국어로 입력하세요. 고객 언어로 자동 번역되어 전송됩니다. (Enter 전송)"
+                ? "한국어로 입력 (Enter 전송 · Shift+Enter 줄바꿈)"
                 : "메시지 입력 (Enter 전송 · Shift+Enter 줄바꿈)"
             }
             className={composerInputClass}
@@ -302,6 +306,9 @@ const MessageComposer = ({
             disabled={sending}
           />
         </div>
+        <Text.Body3 className="text-[11px] leading-[16px] text-gray-500">
+          이미지 첨부: {IMAGE_UPLOAD_HINT}
+        </Text.Body3>
       </form>
 
       <ReservationLinkPicker

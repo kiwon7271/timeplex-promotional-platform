@@ -147,7 +147,13 @@ export const useChatRealtime = ({
     const channelName = `store-chat-${storeId}`;
 
     const onMessageInsert = (payload: { new: Record<string, unknown> }) => {
-      appendMessageIfActive(payload.new);
+      const sender = String(payload.new.sender ?? "");
+      // 매장 발신(첨부·링크) — Realtime row만으로는 관계 데이터 없음 → refetch
+      if (sender === "STORE") {
+        void refreshMessages();
+      } else {
+        appendMessageIfActive(payload.new);
+      }
       void refreshConversations();
     };
 

@@ -1,5 +1,8 @@
 import { ALLOWED_EXTENSIONS, ALLOWED_MIME_TYPES, MAX_FILE_SIZE } from "@/lib/constants";
 
+/** 이미지 첨부 안내 — 채팅·서류 공통 */
+export const IMAGE_UPLOAD_HINT = "jpg, jpeg, png · 파일당 최대 5MB";
+
 // 업로드 파일 검증 (jpg/jpeg/png, 5MB 이하)
 export const validateImageFile = (file: File): string | null => {
   if (!file || file.size === 0) return "파일을 선택하세요.";
