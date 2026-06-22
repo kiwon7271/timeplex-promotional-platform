@@ -4,7 +4,10 @@ import {
   findOrCreateCustomerConversation,
   updateConversationCustomerName,
 } from "@/lib/chat-conversation";
-import { receiveCustomerMessage } from "@/lib/chat-inbound";
+import {
+  enrichCustomerMessageTranslation,
+  receiveCustomerMessage,
+} from "@/lib/chat-inbound";
 import {
   clearLineWebhookError,
   findLineConnectionByDestination,
@@ -94,6 +97,19 @@ export const handleLineWebhook = async (
       errors.push(messageResult.message);
       console.error("[LINE webhook] message save failed:", messageResult.message);
       continue;
+    }
+
+    if (
+      !messageResult.duplicate &&
+      messageResult.messageId &&
+      parsed.body.trim()
+    ) {
+      void enrichCustomerMessageTranslation({
+        messageId: messageResult.messageId,
+        conversationId: conversationResult.conversationId,
+        body: parsed.body,
+        existingLocale: messageResult.existingLocale ?? null,
+      });
     }
 
     if (!messageResult.duplicate) {

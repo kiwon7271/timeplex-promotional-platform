@@ -100,12 +100,32 @@ export const useChatRealtime = ({
     });
   }, []);
 
+  const patchMessageIfActive = useCallback((row: Record<string, unknown>) => {
+    const activeId = conversationIdRef.current;
+    const newConversationId = String(row.conversation_id ?? "");
+    if (!activeId || newConversationId !== activeId) return;
+
+    const incoming = toRealtimeMessage(row);
+    setMessages((prev) => {
+      const index = prev.findIndex((item) => item.id === incoming.id);
+      if (index === -1) return prev;
+      const next = [...prev];
+      next[index] = { ...next[index], ...incoming };
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
     const supabase = createClient();
     const channelName = `store-chat-${storeId}`;
 
     const onMessageInsert = (payload: { new: Record<string, unknown> }) => {
       appendMessageIfActive(payload.new);
+      void refreshConversations();
+    };
+
+    const onMessageUpdate = (payload: { new: Record<string, unknown> }) => {
+      patchMessageIfActive(payload.new);
       void refreshConversations();
     };
 
@@ -132,6 +152,15 @@ export const useChatRealtime = ({
         },
         onMessageInsert,
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "messages",
+        },
+        onMessageUpdate,
+      )
       .subscribe();
 
     const pollId = window.setInterval(() => {
@@ -155,7 +184,7 @@ export const useChatRealtime = ({
       document.removeEventListener("visibilitychange", onVisible);
       void supabase.removeChannel(realtimeChannel);
     };
-  }, [storeId, appendMessageIfActive, refreshConversations, refreshMessages]);
+  }, [storeId, appendMessageIfActive, patchMessageIfActive, refreshConversations, refreshMessages]);
 
   return { conversations, messages, refreshMessages };
 };

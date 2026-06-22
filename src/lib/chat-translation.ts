@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { STORE_LOCALE } from "@/lib/locale";
 import { detectLocale, translateText } from "@/lib/translate";
 
@@ -30,6 +31,12 @@ export const translateCustomerInbound = async (
 
   if (!customerLocale) {
     customerLocale = (await detectLocale(body)) ?? "en";
+  } else if (customerLocale === STORE_LOCALE) {
+    // Webhook fast-path에서 ko로 잘못 저장된 경우 재감지
+    const detected = await detectLocale(body);
+    if (detected && detected !== STORE_LOCALE) {
+      customerLocale = detected;
+    }
   }
 
   const translated_body = await translateText({
@@ -43,4 +50,34 @@ export const translateCustomerInbound = async (
     body,
     translated_body,
   };
+};
+
+/** 발신 번역 전 — customer_locale 미설정 시 최근 고객 메시지로 감지 */
+export const resolveCustomerLocale = async (
+  supabase: SupabaseClient,
+  conversationId: string,
+  currentLocale: string | null,
+): Promise<string | null> => {
+  if (currentLocale && currentLocale !== STORE_LOCALE) return currentLocale;
+
+  const { data: lastCustomer } = await supabase
+    .from("messages")
+    .select("body")
+    .eq("conversation_id", conversationId)
+    .eq("sender", "CUSTOMER")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!lastCustomer?.body?.trim()) return currentLocale;
+
+  const detected = (await detectLocale(lastCustomer.body)) ?? currentLocale;
+  if (detected && detected !== currentLocale) {
+    await supabase
+      .from("conversations")
+      .update({ customer_locale: detected })
+      .eq("id", conversationId);
+  }
+
+  return detected;
 };

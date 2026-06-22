@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireStoreUser } from "@/lib/auth";
 import { hasStoreChatConsent } from "@/lib/consent";
 import { attachMessageSignedUrls, MESSAGE_SELECT } from "@/lib/chat-messages";
-import { translateStoreOutbound } from "@/lib/chat-translation";
+import { resolveCustomerLocale, translateStoreOutbound } from "@/lib/chat-translation";
 import { dispatchOutboundMessage } from "@/lib/messenger/outbound-dispatch";
 import { BUCKETS } from "@/lib/constants";
 import { validateImageFile, safeFileName, resolveUploadFileName } from "@/lib/upload";
@@ -89,7 +89,12 @@ export const onSendMessage = async (formData: FormData): Promise<ActionResult> =
 
   let translatedBody: string | null = null;
   if (body) {
-    const translated = await translateStoreOutbound(body, conversation.customer_locale);
+    const customerLocale = await resolveCustomerLocale(
+      supabase,
+      conversationId,
+      conversation.customer_locale,
+    );
+    const translated = await translateStoreOutbound(body, customerLocale);
     translatedBody = translated.translated_body;
   }
 

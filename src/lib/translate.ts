@@ -28,7 +28,15 @@ const callOpenAI = async (
       }),
     });
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      const errBody = await response.text().catch(() => "");
+      console.error(
+        "[translate] OpenAI API error:",
+        response.status,
+        errBody.slice(0, 300),
+      );
+      return null;
+    }
 
     const json = (await response.json()) as {
       choices?: { message?: { content?: string } }[];
