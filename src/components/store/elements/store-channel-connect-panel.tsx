@@ -7,6 +7,7 @@ import {
   type Channel,
   type ChannelConnectionStatus,
 } from "@/lib/constants";
+import type { LineConnectionDiagnostic } from "@/types/store";
 import type { StoreChannelConnection } from "@/types/database";
 import Badge from "@/components/ui/badge";
 import Text from "@/components/ui/text";
@@ -15,6 +16,7 @@ import StoreLineConnectCard from "@/components/store/elements/store-line-connect
 interface StoreChannelConnectPanelProps {
   connections: StoreChannelConnection[];
   lineWebhookUrl: string;
+  lineDiagnostic: LineConnectionDiagnostic;
 }
 
 const getConnectionStatus = (
@@ -32,6 +34,7 @@ const getConnection = (connections: StoreChannelConnection[], channel: Channel) 
 const StoreChannelConnectPanel = ({
   connections,
   lineWebhookUrl,
+  lineDiagnostic,
 }: StoreChannelConnectPanelProps) => (
   <div className="rounded-lg border border-gray-200 bg-white p-4">
     <div className="mb-3">
@@ -70,6 +73,7 @@ const StoreChannelConnectPanel = ({
       <StoreLineConnectCard
         connection={getConnection(connections, "LINE")}
         lineWebhookUrl={lineWebhookUrl}
+        lineDiagnostic={lineDiagnostic}
       />
     </ul>
   </div>

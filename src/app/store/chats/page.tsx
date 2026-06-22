@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { attachMessageSignedUrls, MESSAGE_SELECT } from "@/lib/chat-messages";
 import { getAgreedConsentNotices, getPendingConsentNotices } from "@/lib/consent";
 import { getLineWebhookUrl } from "@/lib/app-url";
+import { getLineConnectionDiagnostic } from "@/lib/messenger/line/connection-lookup";
 import { isTranslationConfigured } from "@/lib/translate";
 import PageHeader from "@/components/ui/page-header";
 import PageBody from "@/components/ui/page-body";
@@ -91,6 +92,7 @@ const StoreChats = async ({ searchParams }: StoreChatsPageProps) => {
   const agreedConsents = await getAgreedConsentNotices(profile.store_id);
   const translationEnabled = isTranslationConfigured();
   const lineWebhookUrl = getLineWebhookUrl();
+  const lineDiagnostic = await getLineConnectionDiagnostic(profile.store_id);
 
   return (
     <>
@@ -111,6 +113,7 @@ const StoreChats = async ({ searchParams }: StoreChatsPageProps) => {
           channelConnections={channelConnections ?? []}
           translationEnabled={translationEnabled}
           lineWebhookUrl={lineWebhookUrl}
+          lineDiagnostic={lineDiagnostic}
         />
       </PageBody>
     </>

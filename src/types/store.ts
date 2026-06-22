@@ -20,11 +20,21 @@ export interface StoreChatLogLayoutProps {
   reservationLinks: ReservationLink[];
 }
 
+export interface LineConnectionDiagnostic {
+  serviceRoleConfigured: boolean;
+  status: string;
+  channelId: string | null;
+  hasCredentials: boolean;
+  errorMessage: string | null;
+  hints: string[];
+}
+
 export interface StoreChatLiveLayoutProps extends StoreChatLogLayoutProps {
   storeId: string;
   channelConnections: StoreChannelConnection[];
   translationEnabled: boolean;
   lineWebhookUrl: string;
+  lineDiagnostic: LineConnectionDiagnostic;
 }
 
 export interface StoreInfoFormProps {

@@ -68,11 +68,23 @@ Vercel Dashboard → Settings → Environment Variables:
 
 | 증상 | 확인 |
 |------|------|
-| Verify 실패 | Vercel 배포·URL 오타·0015 미적용 |
-| Verify 성공, 메시지 안 옴 | Use webhook OFF, Auto-reply ON, Channel ID 불일치 |
-| 401 invalid signature | Channel secret 재입력 (Timeplex 연결 정보 수정) |
-| DB에 안 쌓임 | `SUPABASE_SERVICE_ROLE_KEY` Vercel 설정 확인 |
-| 답장만 안 감 | Access token 만료·권한, LINE 연결 상태 CONNECTED 확인 |
+| Verify 실패 (배포 후) | Timeplex `/store/chats`에서 Channel ID·Secret 재저장 → LINE Console Verify 재시도 |
+| Verify 성공했는데 메시지 없음 (구버전) | 예전에는 DB 미매칭도 200 반환 — **최신 코드 배포 후 Verify 재실행** |
+| 401 invalid signature | Channel secret 재입력 |
+| DB에 안 쌓임 | Vercel `SUPABASE_SERVICE_ROLE_KEY` + **0015 SQL** 적용 |
+| `column external_thread_id does not exist` | **0015_line_integration.sql** 미적용 |
+| 답장만 안 감 | Access token 만료·권한 확인 |
+
+### 브라우저로 Webhook URL 확인
+
+```
+GET https://your-project.vercel.app/api/webhooks/line
+→ {"ok":true,"service":"line-webhook",...}
+```
+
+### Vercel Logs
+
+Deployments → Functions → `/api/webhooks/line` — `[LINE webhook]` 로그 확인
 
 ---
 

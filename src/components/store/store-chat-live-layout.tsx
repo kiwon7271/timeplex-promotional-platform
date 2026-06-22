@@ -27,6 +27,7 @@ const StoreChatLiveLayout = ({
   channelConnections,
   translationEnabled,
   lineWebhookUrl,
+  lineDiagnostic,
 }: StoreChatLiveLayoutProps) => {
   const router = useRouter();
 
@@ -63,6 +64,7 @@ const StoreChatLiveLayout = ({
       <StoreChannelConnectPanel
         connections={channelConnections}
         lineWebhookUrl={lineWebhookUrl}
+        lineDiagnostic={lineDiagnostic}
       />
 
       <ChatLogLayout

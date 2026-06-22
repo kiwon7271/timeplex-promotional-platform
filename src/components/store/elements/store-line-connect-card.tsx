@@ -7,11 +7,11 @@ import {
   onDisconnectLineChannel,
 } from "@/actions/channel-connections";
 import {
-  CHANNEL_CONNECTION_STATUS,
   CHANNEL_CONNECTION_STATUS_LABEL,
   type ChannelConnectionStatus,
 } from "@/lib/constants";
 import { ICON_SIZE, ICON_STROKE } from "@/lib/icon-size";
+import type { LineConnectionDiagnostic } from "@/types/store";
 import type { StoreChannelConnection } from "@/types/database";
 import Badge from "@/components/ui/badge";
 import Button from "@/components/ui/button";
@@ -24,12 +24,14 @@ import { useDialog } from "@/components/providers/dialog-provider";
 interface StoreLineConnectCardProps {
   connection?: StoreChannelConnection;
   lineWebhookUrl: string;
+  lineDiagnostic: LineConnectionDiagnostic;
 }
 
 /** LINE 연결 카드 — Webhook URL 안내 + credential 입력 */
 const StoreLineConnectCard = ({
   connection,
   lineWebhookUrl,
+  lineDiagnostic,
 }: StoreLineConnectCardProps) => {
   const { openAlert, openConfirm } = useDialog();
   const [open, setOpen] = useState(false);
@@ -147,12 +149,14 @@ const StoreLineConnectCard = ({
           </div>
           <Text.Body3 className="text-[12px] leading-relaxed text-gray-600">
             LINE Developers → Messaging API → Webhook URL 등록 → Verify → Use webhook ON
+            <br />
+            Verify가 실패하면 Timeplex에 저장한 Channel ID와 Secret이 LINE Console과 일치하는지 확인하세요.
           </Text.Body3>
         </div>
 
         {isConnected ? (
           <Text.Body3 className="text-[12px] text-gray-600">
-            Channel ID: {connection?.external_account_id ?? "-"}
+            Channel ID: {connection?.external_account_id ?? lineDiagnostic.channelId ?? "-"}
             {connection?.display_name ? ` · ${connection.display_name}` : ""}
           </Text.Body3>
         ) : (
@@ -160,6 +164,22 @@ const StoreLineConnectCard = ({
             ② 「라인 연결하기」에서 Channel ID, Secret, Access Token을 입력하세요.
           </Text.Body3>
         )}
+
+        {lineDiagnostic.hints.length > 0 ? (
+          <div className="space-y-1 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+            {lineDiagnostic.hints.map((hint) => (
+              <Text.Body3 key={hint} className="text-[12px] leading-relaxed text-amber-900">
+                · {hint}
+              </Text.Body3>
+            ))}
+          </div>
+        ) : null}
+
+        {isConnected && lineDiagnostic.hasCredentials && lineDiagnostic.serviceRoleConfigured ? (
+          <Text.Body3 className="text-[12px] text-green-700">
+            · Webhook 수신 준비 OK — LINE 앱에서 공식 계정에 메시지를 보내 테스트하세요.
+          </Text.Body3>
+        ) : null}
       </li>
 
       <Modal open={open} title="라인 연결" onClose={onCloseModal} size="md">

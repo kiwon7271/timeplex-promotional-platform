@@ -1,58 +1,64 @@
 import "server-only";
 
-import { createServiceClient } from "@/lib/supabase/service";
 import {
   findOrCreateCustomerConversation,
   updateConversationCustomerName,
 } from "@/lib/chat-conversation";
 import { receiveCustomerMessage } from "@/lib/chat-inbound";
-import { parseLineCredentials } from "@/lib/messenger/line/credentials";
+import {
+  clearLineWebhookError,
+  findLineConnectionByDestination,
+  recordLineWebhookError,
+} from "@/lib/messenger/line/connection-lookup";
 import { fetchLineUserProfile } from "@/lib/messenger/line/fetch-profile";
 import { getLineInboundBody, getLineUserId } from "@/lib/messenger/line/parse-event";
 import type { LineWebhookBody } from "@/lib/messenger/line/types";
 
-/** destination(LINE 채널 ID) → 매장 연결 조회 */
-const findLineStoreConnection = async (destination: string) => {
-  const supabase = createServiceClient();
-
-  const { data } = await supabase
-    .from("store_channel_connections")
-    .select("store_id, credentials, display_name, status")
-    .eq("channel", "LINE")
-    .eq("external_account_id", destination)
-    .eq("status", "CONNECTED")
-    .maybeSingle();
-
-  if (!data) return null;
-
-  const credentials = parseLineCredentials(data.credentials);
-  if (!credentials) return null;
-
-  return {
-    storeId: data.store_id,
-    credentials,
-    displayName: data.display_name,
-  };
-};
+export type LineWebhookHandleResult =
+  | { ok: true; processed: number; skipped: number }
+  | { ok: false; message: string; reason?: string };
 
 /** LINE Webhook 이벤트 처리 */
-export const handleLineWebhook = async (payload: LineWebhookBody) => {
+export const handleLineWebhook = async (
+  payload: LineWebhookBody,
+): Promise<LineWebhookHandleResult> => {
   const destination = payload.destination?.trim();
   if (!destination) {
-    return { ok: false as const, message: "destination 없음" };
+    return { ok: false, message: "destination 없음" };
   }
 
-  const connection = await findLineStoreConnection(destination);
-  if (!connection) {
-    return { ok: false as const, message: "연결된 매장 없음" };
+  const connection = await findLineConnectionByDestination(destination);
+  if (!connection.ok) {
+    console.error("[LINE webhook] connection lookup failed:", connection.reason, connection.message);
+    return {
+      ok: false,
+      message: connection.message,
+      reason: connection.reason,
+    };
   }
 
-  for (const event of payload.events ?? []) {
+  const events = payload.events ?? [];
+  if (events.length === 0) {
+    await clearLineWebhookError(destination);
+    return { ok: true, processed: 0, skipped: 0 };
+  }
+
+  let processed = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+
+  for (const event of events) {
     const lineUserId = getLineUserId(event);
-    if (!lineUserId) continue;
+    if (!lineUserId) {
+      skipped += 1;
+      continue;
+    }
 
     const parsed = getLineInboundBody(event);
-    if (!parsed) continue;
+    if (!parsed) {
+      skipped += 1;
+      continue;
+    }
 
     const conversationResult = await findOrCreateCustomerConversation({
       storeId: connection.storeId,
@@ -60,7 +66,11 @@ export const handleLineWebhook = async (payload: LineWebhookBody) => {
       externalThreadId: lineUserId,
     });
 
-    if (!conversationResult.ok) continue;
+    if (!conversationResult.ok) {
+      errors.push(conversationResult.message);
+      console.error("[LINE webhook] conversation create failed:", conversationResult.message);
+      continue;
+    }
 
     const profile = await fetchLineUserProfile(
       lineUserId,
@@ -74,18 +84,36 @@ export const handleLineWebhook = async (payload: LineWebhookBody) => {
       );
     }
 
-    await receiveCustomerMessage({
+    const messageResult = await receiveCustomerMessage({
       conversationId: conversationResult.conversationId,
       body: parsed.body,
       externalMessageId: parsed.externalMessageId,
     });
+
+    if (!messageResult.ok) {
+      errors.push(messageResult.message);
+      console.error("[LINE webhook] message save failed:", messageResult.message);
+      continue;
+    }
+
+    if (!messageResult.duplicate) {
+      processed += 1;
+    }
   }
 
-  return { ok: true as const };
+  if (errors.length > 0) {
+    const summary = errors[0]!;
+    await recordLineWebhookError(destination, summary);
+    return { ok: false, message: summary, reason: "PROCESS_ERROR" };
+  }
+
+  await clearLineWebhookError(destination);
+  return { ok: true, processed, skipped };
 };
 
 /** Webhook 서명 검증용 channel secret */
 export const getLineChannelSecretByDestination = async (destination: string) => {
-  const connection = await findLineStoreConnection(destination);
-  return connection?.credentials.channel_secret ?? null;
+  const connection = await findLineConnectionByDestination(destination);
+  if (!connection.ok) return null;
+  return connection.channelSecret;
 };
