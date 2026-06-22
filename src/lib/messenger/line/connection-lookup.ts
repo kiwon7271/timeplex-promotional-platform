@@ -230,11 +230,7 @@ export const getLineConnectionDiagnostic = async (storeId: string) => {
   if (data.error_message) {
     hints.push(`최근 Webhook 오류: ${data.error_message}`);
   }
-  if (data.last_webhook_at) {
-    hints.push(
-      `마지막 Webhook 수신: ${new Date(data.last_webhook_at).toLocaleString("ko-KR")} · ${data.last_webhook_summary ?? ""}`,
-    );
-  } else if (data.status === "CONNECTED" && hasCredentials) {
+  if (!data.last_webhook_at && data.status === "CONNECTED" && hasCredentials) {
     hints.push(
       "아직 Webhook 수신 기록이 없습니다. LINE 앱에서 공식 계정에 메시지를 보내 보세요.",
     );

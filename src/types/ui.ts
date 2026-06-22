@@ -1,5 +1,5 @@
 import type { HTMLMotionProps } from "motion/react";
-import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
+import type { HTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 import type { ActionResult } from "@/types/action-result";
 import type { ControlSize } from "@/lib/ui-control";
 
@@ -205,10 +205,10 @@ export interface PaginationProps {
   size?: ControlSize;
 }
 
-export interface H1Props extends HTMLMotionProps<"h1"> {}
-export interface H2Props extends HTMLMotionProps<"h2"> {}
-export interface H3Props extends HTMLMotionProps<"h3"> {}
-export interface H4Props extends HTMLMotionProps<"h4"> {}
-export interface H5Props extends HTMLMotionProps<"h5"> {}
-export interface H6Props extends HTMLMotionProps<"h6"> {}
-export interface PProps extends HTMLMotionProps<"p"> {}
+export interface H1Props extends HTMLAttributes<HTMLHeadingElement> {}
+export interface H2Props extends HTMLAttributes<HTMLHeadingElement> {}
+export interface H3Props extends HTMLAttributes<HTMLHeadingElement> {}
+export interface H4Props extends HTMLAttributes<HTMLHeadingElement> {}
+export interface H5Props extends HTMLAttributes<HTMLHeadingElement> {}
+export interface H6Props extends HTMLAttributes<HTMLHeadingElement> {}
+export interface PProps extends HTMLAttributes<HTMLParagraphElement> {}

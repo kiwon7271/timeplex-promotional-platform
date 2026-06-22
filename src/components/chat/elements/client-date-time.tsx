@@ -1,38 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-const formatKoDateTime = (value: string) =>
-  new Date(value).toLocaleString("ko-KR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+import { formatDateTime } from "@/lib/format-datetime";
 
 interface ClientDateTimeProps {
   value: string;
   className?: string;
-  fallback?: string;
 }
 
-/** SSR·CSR 시간대 불일치 hydration 오류 방지 */
-const ClientDateTime = ({
-  value,
-  className,
-  fallback = "-",
-}: ClientDateTimeProps) => {
+/** SSR·CSR 시간대 불일치 hydration 오류 방지 — 마운트 후에만 표시 */
+const ClientDateTime = ({ value, className }: ClientDateTimeProps) => {
   const [text, setText] = useState<string | null>(null);
 
   useEffect(() => {
-    setText(formatKoDateTime(value));
+    setText(formatDateTime(value));
   }, [value]);
 
   return (
-    <span className={className} suppressHydrationWarning>
-      {text ?? fallback}
-    </span>
+    <time dateTime={value} className={className} suppressHydrationWarning>
+      {text ?? "\u00a0"}
+    </time>
   );
 };
 

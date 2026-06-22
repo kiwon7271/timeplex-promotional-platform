@@ -3,6 +3,7 @@
 import { IconSpeakerphone } from "@tabler/icons-react";
 import Badge from "@/components/ui/badge";
 import Text from "@/components/ui/text";
+import ClientDateTime from "@/components/chat/elements/client-date-time";
 import { ICON_SIZE, ICON_STROKE } from "@/lib/icon-size";
 
 interface ConsentNoticeItemProps {
@@ -31,7 +32,7 @@ const ConsentNoticeItem = ({ title, content, version, agreedAt }: ConsentNoticeI
         </div>
         {agreedAt ? (
           <Text.Body3 className="text-gray-500">
-            동의 일시: {new Date(agreedAt).toLocaleString("ko-KR")}
+            동의 일시: <ClientDateTime value={agreedAt} className="inline text-gray-500" />
           </Text.Body3>
         ) : null}
         <Text.Body2 className="whitespace-pre-wrap break-words text-gray-800">{content}</Text.Body2>

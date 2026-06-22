@@ -20,6 +20,7 @@ import Input from "@/components/ui/input";
 import Modal from "@/components/ui/modal";
 import Text from "@/components/ui/text";
 import { useDialog } from "@/components/providers/dialog-provider";
+import ClientDateTime from "@/components/chat/elements/client-date-time";
 
 interface StoreLineConnectCardProps {
   connection?: StoreChannelConnection;
@@ -171,6 +172,19 @@ const StoreLineConnectCard = ({
               </Text.Body3>
             ))}
           </div>
+        ) : null}
+
+        {lineDiagnostic.lastWebhookAt ? (
+          <Text.Body3 className="text-[12px] leading-relaxed text-gray-600">
+            마지막 Webhook 수신:{" "}
+            <ClientDateTime
+              value={lineDiagnostic.lastWebhookAt}
+              className="inline text-[12px] text-gray-600"
+            />
+            {lineDiagnostic.lastWebhookSummary
+              ? ` · ${lineDiagnostic.lastWebhookSummary}`
+              : ""}
+          </Text.Body3>
         ) : null}
 
         {isConnected && lineDiagnostic.hasCredentials && lineDiagnostic.serviceRoleConfigured ? (
