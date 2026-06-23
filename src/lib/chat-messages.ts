@@ -1,7 +1,7 @@
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import { MESSAGE_SELECT } from "@/lib/supabase/query-columns";
 import { BUCKETS } from "@/lib/constants";
 import type { MessageWithAttachments } from "@/types/chat";
 
@@ -10,8 +10,9 @@ export { MESSAGE_SELECT } from "@/lib/supabase/query-columns";
 /** 메시지 첨부 signed URL 부여 */
 export const attachMessageSignedUrls = async (
   messages: MessageWithAttachments[],
+  supabaseClient?: SupabaseClient,
 ): Promise<MessageWithAttachments[]> => {
-  const supabase = createClient();
+  const supabase = supabaseClient ?? createClient();
 
   return Promise.all(
     messages.map(async (message) => {

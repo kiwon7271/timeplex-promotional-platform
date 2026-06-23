@@ -6,13 +6,21 @@ type ApiResponse<T> = { ok: true; data: T; message?: string } | { ok: false; mes
 const chatFetch = (path: string, init?: RequestInit) =>
   fetch(path, { credentials: "include", cache: "no-store", ...init });
 
+const parseApiResponse = async <T>(response: Response): Promise<ApiResponse<T>> => {
+  try {
+    return (await response.json()) as ApiResponse<T>;
+  } catch {
+    return { ok: false, message: `서버 오류 (${response.status})` };
+  }
+};
+
 /** GET — 대화 메시지 */
 export const fetchChatMessagesApi = async (
   conversationId: string,
 ): Promise<MessageWithAttachments[]> => {
   try {
     const response = await chatFetch(`/api/store/chats/conversations/${conversationId}/messages`);
-    const json = (await response.json()) as ApiResponse<MessageWithAttachments[]>;
+    const json = await parseApiResponse<MessageWithAttachments[]>(response);
     if (!response.ok || !json.ok) return [];
     return json.data ?? [];
   } catch {
@@ -28,11 +36,17 @@ export const sendChatMessageApi = async (formData: FormData) => {
       body: formData,
     });
 
-    const json = (await response.json()) as ApiResponse<MessageWithAttachments>;
+    const json = await parseApiResponse<MessageWithAttachments>(response);
+    if (!response.ok || !json.ok) {
+      return {
+        ok: false as const,
+        message: json.ok ? `전송 실패 (${response.status})` : json.message ?? "전송 실패",
+      };
+    }
+
     return {
-      ok: response.ok && json.ok,
-      message: !json.ok ? json.message : undefined,
-      data: json.ok ? json.data : undefined,
+      ok: true as const,
+      data: json.data,
     };
   } catch {
     return { ok: false as const, message: "네트워크 오류" };
@@ -60,7 +74,7 @@ export const fetchChatConversationsApi = async (params?: {
 
     const qs = search.toString();
     const response = await chatFetch(`/api/store/chats/conversations${qs ? `?${qs}` : ""}`);
-    const json = (await response.json()) as ApiResponse<Conversation[]>;
+    const json = await parseApiResponse<Conversation[]>(response);
     if (!response.ok || !json.ok) return [];
     return json.data ?? [];
   } catch {

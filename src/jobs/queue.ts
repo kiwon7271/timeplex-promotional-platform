@@ -55,7 +55,7 @@ export const enqueueJob = <T extends JobName>(name: T, payload: JobPayloadMap[T]
   void runJobWithDispatch(name, payload);
 };
 
-/** Vercel/Route API — 응답 전 job 완료 대기 (매장 발신 등) */
+/** Vercel/Route API — job 완료 대기 (재시도 포함, throw 없음) */
 export const runJobWithDispatch = async <T extends JobName>(
   name: T,
   payload: JobPayloadMap[T],
@@ -70,8 +70,12 @@ export const runJobWithDispatch = async <T extends JobName>(
   } catch (error) {
     captureJobError(name, error, { payload });
 
-    if (await dispatchJobViaHttp(name, payload)) return;
-    await runJob(name, payload);
+    try {
+      if (await dispatchJobViaHttp(name, payload)) return;
+      await runJob(name, payload);
+    } catch (retryError) {
+      captureJobError(name, retryError, { payload, retry: "inline" });
+    }
   }
 };
 

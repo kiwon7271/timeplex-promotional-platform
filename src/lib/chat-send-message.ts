@@ -1,7 +1,6 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { enqueueJob, runJobWithDispatch } from "@/jobs/queue";
 import { attachMessageSignedUrls, MESSAGE_SELECT } from "@/lib/chat-messages";
 import { hasStoreChatConsent } from "@/lib/consent";
 import { BUCKETS } from "@/lib/constants";
@@ -136,14 +135,6 @@ export const sendStoreMessage = async (
     })
     .eq("id", input.conversationId);
 
-  // Route API 응답 후 serverless가 종료되므로 번역·LINE 전송은 반드시 await
-  await runJobWithDispatch("deliver-message", {
-    messageId: message.id,
-    conversationId: input.conversationId,
-  });
-
-  enqueueJob("update-usage", { storeId });
-
   const { data: messageRow } = await input.supabase
     .from("messages")
     .select(MESSAGE_SELECT)
@@ -154,7 +145,10 @@ export const sendStoreMessage = async (
     return { ok: false, message: "메시지 조회 실패", status: 500 };
   }
 
-  const [withUrls] = await attachMessageSignedUrls([messageRow as MessageWithAttachments]);
+  const [withUrls] = await attachMessageSignedUrls(
+    [messageRow as MessageWithAttachments],
+    input.supabase,
+  );
 
   return { ok: true, data: withUrls };
 };
