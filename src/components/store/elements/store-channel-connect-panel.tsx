@@ -87,9 +87,10 @@ const StoreChannelConnectPanel = ({
 
       <div
         className={cn(
-          "overflow-hidden rounded-lg border",
+          "overflow-hidden rounded-xl border backdrop-blur-[2px]",
           activeTheme.panelBorder,
           activeTheme.panelBg,
+          activeTheme.panelGlow,
         )}
         role="tabpanel"
       >
@@ -101,7 +102,7 @@ const StoreChannelConnectPanel = ({
           )}
         >
           <div className="flex items-center gap-2">
-            <span className={cn("h-3 w-3 rounded-full ring-2 ring-white/50", activeTheme.dot)} />
+            <span className={cn("h-3 w-3 rounded-full", activeTheme.dot)} />
             <span className="text-[15px] font-semibold">{getChannelLabel(activeChannel)}</span>
           </div>
           <span

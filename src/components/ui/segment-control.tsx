@@ -42,7 +42,7 @@ const SegmentControl = <T extends string>({
           aria-selected={isActive}
           onClick={() => onChange(option.value)}
           className={cn(
-            "flex min-h-[72px] flex-col items-start gap-1.5 rounded-lg px-3 py-2.5 text-left transition-colors",
+            "flex min-h-[76px] flex-col items-start gap-2 rounded-xl px-3 py-3 text-left backdrop-blur-[2px] transition-all duration-200",
             isActive ? option.activeClassName : option.inactiveClassName,
           )}
         >

@@ -6,6 +6,7 @@ export type ChannelBrandTheme = {
   segmentInactive: string;
   panelBorder: string;
   panelBg: string;
+  panelGlow: string;
   headerBg: string;
   headerText: string;
   statusConnected: string;
@@ -13,59 +14,67 @@ export type ChannelBrandTheme = {
   statusPending: string;
 };
 
-/** 채널별 브랜드 색상 — 세그먼트·패널 UI */
+/** 채널별 라이트 네온 테마 — 세그먼트·패널 UI */
 export const CHANNEL_BRAND: Record<Channel, ChannelBrandTheme> = {
   WEB: {
-    dot: "bg-blue-500",
-    segmentActive: "bg-blue-600 text-white shadow-sm ring-2 ring-blue-600",
+    dot: "bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,0.85)]",
+    segmentActive:
+      "bg-white/95 text-blue-800 ring-2 ring-blue-300/70 shadow-[0_0_22px_rgba(59,130,246,0.32)]",
     segmentInactive:
-      "bg-white text-gray-800 ring-1 ring-inset ring-blue-200 hover:bg-blue-50/80",
-    panelBorder: "border-blue-200",
-    panelBg: "bg-blue-50/40",
-    headerBg: "bg-blue-600",
-    headerText: "text-white",
-    statusConnected: "bg-blue-100 text-blue-800",
-    statusDisconnected: "bg-white/90 text-blue-900",
-    statusPending: "bg-white/80 text-gray-600",
+      "bg-blue-50/50 text-blue-900/75 ring-1 ring-blue-200/60 shadow-[0_0_14px_rgba(59,130,246,0.1)] hover:bg-blue-50/90 hover:shadow-[0_0_18px_rgba(59,130,246,0.2)]",
+    panelBorder: "border-blue-200/70",
+    panelBg: "bg-blue-50/25",
+    panelGlow: "shadow-[0_0_24px_rgba(59,130,246,0.12)]",
+    headerBg: "border-b border-blue-200/50 bg-gradient-to-r from-blue-50/90 to-white",
+    headerText: "text-blue-900",
+    statusConnected: "bg-blue-100/90 text-blue-700 ring-1 ring-blue-200/70",
+    statusDisconnected: "bg-white/80 text-blue-800/70 ring-1 ring-blue-100",
+    statusPending: "bg-white/70 text-gray-500 ring-1 ring-gray-200/80",
   },
   WHATSAPP: {
-    dot: "bg-green-500",
-    segmentActive: "bg-green-600 text-white shadow-sm ring-2 ring-green-600",
+    dot: "bg-green-400 shadow-[0_0_10px_rgba(74,222,128,0.85)]",
+    segmentActive:
+      "bg-white/95 text-green-800 ring-2 ring-green-300/70 shadow-[0_0_22px_rgba(34,197,94,0.32)]",
     segmentInactive:
-      "bg-white text-gray-800 ring-1 ring-inset ring-green-200 hover:bg-green-50/80",
-    panelBorder: "border-green-200",
-    panelBg: "bg-green-50/40",
-    headerBg: "bg-green-600",
-    headerText: "text-white",
-    statusConnected: "bg-green-100 text-green-800",
-    statusDisconnected: "bg-white/90 text-green-900",
-    statusPending: "bg-white/80 text-gray-600",
+      "bg-green-50/50 text-green-900/75 ring-1 ring-green-200/60 shadow-[0_0_14px_rgba(34,197,94,0.1)] hover:bg-green-50/90 hover:shadow-[0_0_18px_rgba(34,197,94,0.2)]",
+    panelBorder: "border-green-200/70",
+    panelBg: "bg-green-50/25",
+    panelGlow: "shadow-[0_0_24px_rgba(34,197,94,0.12)]",
+    headerBg: "border-b border-green-200/50 bg-gradient-to-r from-green-50/90 to-white",
+    headerText: "text-green-900",
+    statusConnected: "bg-green-100/90 text-green-700 ring-1 ring-green-200/70",
+    statusDisconnected: "bg-white/80 text-green-800/70 ring-1 ring-green-100",
+    statusPending: "bg-white/70 text-gray-500 ring-1 ring-gray-200/80",
   },
   INSTAGRAM: {
-    dot: "bg-fuchsia-500",
-    segmentActive: "bg-fuchsia-600 text-white shadow-sm ring-2 ring-fuchsia-600",
+    dot: "bg-fuchsia-400 shadow-[0_0_10px_rgba(232,121,249,0.85)]",
+    segmentActive:
+      "bg-white/95 text-fuchsia-800 ring-2 ring-fuchsia-300/70 shadow-[0_0_22px_rgba(217,70,239,0.32)]",
     segmentInactive:
-      "bg-white text-gray-800 ring-1 ring-inset ring-fuchsia-200 hover:bg-fuchsia-50/80",
-    panelBorder: "border-fuchsia-200",
-    panelBg: "bg-fuchsia-50/40",
-    headerBg: "bg-gradient-to-r from-purple-600 to-pink-500",
-    headerText: "text-white",
-    statusConnected: "bg-fuchsia-100 text-fuchsia-800",
-    statusDisconnected: "bg-white/90 text-fuchsia-900",
-    statusPending: "bg-white/80 text-gray-600",
+      "bg-fuchsia-50/50 text-fuchsia-900/75 ring-1 ring-fuchsia-200/60 shadow-[0_0_14px_rgba(217,70,239,0.1)] hover:bg-fuchsia-50/90 hover:shadow-[0_0_18px_rgba(217,70,239,0.2)]",
+    panelBorder: "border-fuchsia-200/70",
+    panelBg: "bg-fuchsia-50/25",
+    panelGlow: "shadow-[0_0_24px_rgba(217,70,239,0.12)]",
+    headerBg: "border-b border-fuchsia-200/50 bg-gradient-to-r from-fuchsia-50/90 via-pink-50/50 to-white",
+    headerText: "text-fuchsia-900",
+    statusConnected: "bg-fuchsia-100/90 text-fuchsia-700 ring-1 ring-fuchsia-200/70",
+    statusDisconnected: "bg-white/80 text-fuchsia-800/70 ring-1 ring-fuchsia-100",
+    statusPending: "bg-white/70 text-gray-500 ring-1 ring-gray-200/80",
   },
   LINE: {
-    dot: "bg-emerald-500",
-    segmentActive: "bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-600",
+    dot: "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.85)]",
+    segmentActive:
+      "bg-white/95 text-emerald-800 ring-2 ring-emerald-300/70 shadow-[0_0_22px_rgba(16,185,129,0.32)]",
     segmentInactive:
-      "bg-white text-gray-800 ring-1 ring-inset ring-emerald-200 hover:bg-emerald-50/80",
-    panelBorder: "border-emerald-200",
-    panelBg: "bg-emerald-50/40",
-    headerBg: "bg-emerald-500",
-    headerText: "text-white",
-    statusConnected: "bg-emerald-100 text-emerald-800",
-    statusDisconnected: "bg-white/90 text-emerald-900",
-    statusPending: "bg-white/80 text-gray-600",
+      "bg-emerald-50/50 text-emerald-900/75 ring-1 ring-emerald-200/60 shadow-[0_0_14px_rgba(16,185,129,0.1)] hover:bg-emerald-50/90 hover:shadow-[0_0_18px_rgba(16,185,129,0.2)]",
+    panelBorder: "border-emerald-200/70",
+    panelBg: "bg-emerald-50/25",
+    panelGlow: "shadow-[0_0_24px_rgba(16,185,129,0.12)]",
+    headerBg: "border-b border-emerald-200/50 bg-gradient-to-r from-emerald-50/90 to-white",
+    headerText: "text-emerald-900",
+    statusConnected: "bg-emerald-100/90 text-emerald-700 ring-1 ring-emerald-200/70",
+    statusDisconnected: "bg-white/80 text-emerald-800/70 ring-1 ring-emerald-100",
+    statusPending: "bg-white/70 text-gray-500 ring-1 ring-gray-200/80",
   },
 };
 
