@@ -60,7 +60,7 @@ const StoreChannelConnectModal = ({
         메신저 연결{connectedCount > 0 ? ` ${connectedCount}` : ""}
       </Button>
 
-      <Modal open={open} title="메신저 연결 · 이용 안내" onClose={onCloseModal} size="xl">
+      <Modal open={open} title="메신저 연결 · 이용 안내" onClose={onCloseModal} size="lg">
         <div className="space-y-4">
           <StoreChatGuide translationEnabled={translationEnabled} />
           <StoreChannelConnectPanel
@@ -70,7 +70,7 @@ const StoreChannelConnectModal = ({
             embedded
             onMutated={onMutated}
           />
-          <div className="flex justify-end">
+          <div className="flex justify-end pt-1">
             <Button type="button" variant="primary" onClick={onCloseModal}>
               확인
             </Button>

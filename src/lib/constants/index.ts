@@ -143,7 +143,7 @@ export type Channel = (typeof CHANNELS)[number];
 
 /** 매장주용 채널 표시명 */
 export const CHANNEL_LABEL_KO: Record<Channel, string> = {
-  WEB: "웹",
+  WEB: "웹채팅",
   WHATSAPP: "왓츠앱",
   LINE: "라인",
   INSTAGRAM: "인스타그램",
