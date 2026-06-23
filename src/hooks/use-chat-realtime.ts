@@ -55,6 +55,7 @@ export const useChatRealtime = ({
   const conversationIdRef = useRef(initialConversationId);
   const messagesCacheRef = useRef<Record<string, MessageWithAttachments[]>>({});
   const storeRefreshTimerRef = useRef<number | null>(null);
+  const customerRefreshTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (initialConversationId && initialMessages.length > 0) {
@@ -141,7 +142,18 @@ export const useChatRealtime = ({
 
     const incoming = toRealtimeMessage(row);
     setMessages((prev) => {
-      if (prev.some((item) => item.id === incoming.id)) return prev;
+      const existingIndex = prev.findIndex((item) => item.id === incoming.id);
+      if (existingIndex !== -1) {
+        const next = [...prev];
+        next[existingIndex] = {
+          ...next[existingIndex],
+          ...incoming,
+          translated_body: incoming.translated_body ?? next[existingIndex].translated_body,
+        };
+        messagesCacheRef.current[activeId] = next;
+        return next;
+      }
+
       const withoutPending = prev.filter((item) => !item.id.startsWith("pending-"));
       const next = [...withoutPending, incoming];
       messagesCacheRef.current[activeId] = next;
@@ -232,6 +244,21 @@ export const useChatRealtime = ({
     }, 400);
   }, [loadMessages]);
 
+  /** 고객 메시지 — API 재조회로 번역·첨부 반영 */
+  const scheduleCustomerTranslationRefresh = useCallback(() => {
+    const activeId = conversationIdRef.current;
+    if (!activeId) return;
+
+    if (customerRefreshTimerRef.current) {
+      window.clearTimeout(customerRefreshTimerRef.current);
+    }
+
+    customerRefreshTimerRef.current = window.setTimeout(() => {
+      void loadMessages(activeId, true);
+      customerRefreshTimerRef.current = null;
+    }, 250);
+  }, [loadMessages]);
+
   // 대화 목록 Realtime
   useEffect(() => {
     const supabase = createClient();
@@ -277,6 +304,7 @@ export const useChatRealtime = ({
         scheduleStoreMessageRefresh();
       } else {
         appendMessageIfActive(payload.new);
+        scheduleCustomerTranslationRefresh();
       }
       void refreshConversations();
     };
@@ -315,6 +343,10 @@ export const useChatRealtime = ({
         window.clearTimeout(storeRefreshTimerRef.current);
         storeRefreshTimerRef.current = null;
       }
+      if (customerRefreshTimerRef.current) {
+        window.clearTimeout(customerRefreshTimerRef.current);
+        customerRefreshTimerRef.current = null;
+      }
       void supabase.removeChannel(realtimeChannel);
     };
   }, [
@@ -322,6 +354,7 @@ export const useChatRealtime = ({
     appendMessageIfActive,
     patchMessageIfActive,
     refreshConversations,
+    scheduleCustomerTranslationRefresh,
     scheduleStoreMessageRefresh,
   ]);
 

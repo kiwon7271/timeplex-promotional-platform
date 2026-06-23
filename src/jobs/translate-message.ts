@@ -14,41 +14,55 @@ export type TranslateMessagePayload = {
 export const runTranslateMessageJob = async (payload: TranslateMessagePayload) => {
   const supabase = createServiceClient();
 
-  const { data: message } = await supabase
+  const { data: message, error: messageError } = await supabase
     .from("messages")
     .select("id, body, sender, translated_body, delivery_status")
     .eq("id", payload.messageId)
     .single();
 
-  if (!message || message.sender !== "CUSTOMER") return;
+  if (messageError || !message) {
+    log.warn("Translate skipped: message not found", { ...payload, reason: messageError?.message });
+    return;
+  }
+
+  if (message.sender !== "CUSTOMER") return;
   if (message.translated_body) return;
 
   const body = message.body?.trim();
   if (!body || body === "(이미지)" || body === "(예약링크)") return;
+
+  const { data: conversation, error: convError } = await supabase
+    .from("conversations")
+    .select("customer_locale")
+    .eq("id", payload.conversationId)
+    .single();
+
+  if (convError || !conversation) {
+    log.warn("Translate skipped: conversation not found", { ...payload, reason: convError?.message });
+    return;
+  }
+
+  if (!isTranslationConfigured()) return;
 
   await supabase
     .from("messages")
     .update({ delivery_status: "TRANSLATING" })
     .eq("id", payload.messageId);
 
-  const { data: conversation } = await supabase
-    .from("conversations")
-    .select("customer_locale")
-    .eq("id", payload.conversationId)
-    .single();
-
-  if (!conversation) return;
-
   try {
-    if (!isTranslationConfigured()) {
+    const translated = await translateCustomerInbound(body, conversation.customer_locale);
+
+    if (!translated.translated_body?.trim()) {
       await supabase
         .from("messages")
-        .update({ delivery_status: "TRANSLATED" })
+        .update({
+          delivery_status: "FAILED",
+          failed_reason: "번역 결과가 비어 있습니다.",
+        })
         .eq("id", payload.messageId);
+      log.warn("Translate failed: empty result", { messageId: payload.messageId });
       return;
     }
-
-    const translated = await translateCustomerInbound(body, conversation.customer_locale);
 
     const convUpdates: { customer_locale?: string } = {};
     if (!conversation.customer_locale || conversation.customer_locale === "ko") {
