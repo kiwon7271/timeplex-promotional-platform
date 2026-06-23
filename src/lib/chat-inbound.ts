@@ -2,6 +2,9 @@ import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/service";
 import { translateCustomerInbound } from "@/lib/chat-translation";
+import { incrementConversationUnread } from "@/lib/conversation-unread";
+import { enqueueJob } from "@/jobs/queue";
+import { log } from "@/lib/logger";
 import { isTranslationConfigured } from "@/lib/translate";
 
 type ReceiveOk = {
@@ -13,7 +16,7 @@ type ReceiveOk = {
 
 type ReceiveFail = { ok: false; message: string };
 
-/** 고객 → 매장 인바운드 메시지 (웹훅·목업 공용) */
+/** 고객 → 매장 인바운드 — 원문 저장 후 번역은 백그라운드 */
 export const receiveCustomerMessage = async (params: {
   conversationId: string;
   body: string;
@@ -43,32 +46,17 @@ export const receiveCustomerMessage = async (params: {
     return { ok: false, message: "대화를 찾을 수 없습니다." };
   }
 
-  const translated = await translateCustomerInbound(trimmed, conversation.customer_locale);
-
-  if (isTranslationConfigured() && !translated.translated_body) {
-    console.error(
-      "[chat-inbound] inbound translation empty:",
-      params.conversationId,
-      trimmed.slice(0, 80),
-    );
-  }
-
-  const updates: { last_message_at: string; customer_locale?: string } = {
-    last_message_at: new Date().toISOString(),
-  };
-
-  if (!conversation.customer_locale || conversation.customer_locale === "ko") {
-    updates.customer_locale = translated.customerLocale;
-  }
+  const now = new Date().toISOString();
 
   const { data: inserted, error: messageError } = await supabase
     .from("messages")
     .insert({
       conversation_id: params.conversationId,
       sender: "CUSTOMER",
-      body: translated.body,
-      translated_body: translated.translated_body,
+      body: trimmed,
+      translated_body: null,
       external_message_id: params.externalMessageId ?? null,
+      delivery_status: "PENDING",
     })
     .select("id")
     .single();
@@ -77,7 +65,20 @@ export const receiveCustomerMessage = async (params: {
     return { ok: false, message: messageError?.message ?? "메시지 저장 실패" };
   }
 
-  await supabase.from("conversations").update(updates).eq("id", params.conversationId);
+  await supabase
+    .from("conversations")
+    .update({
+      last_message_at: now,
+      last_customer_message_at: now,
+    })
+    .eq("id", params.conversationId);
+
+  await incrementConversationUnread(params.conversationId);
+
+  enqueueJob("translate-message", {
+    messageId: inserted.id,
+    conversationId: params.conversationId,
+  });
 
   return {
     ok: true,
@@ -86,7 +87,7 @@ export const receiveCustomerMessage = async (params: {
   };
 };
 
-/** 이미 저장된 고객 메시지 — 번역 누락분 보강 */
+/** 이미 저장된 고객 메시지 — 번역 누락분 보강 (화면 진입 시) */
 export const backfillConversationTranslations = async (params: {
   conversationId: string;
   storeId: string;
@@ -121,13 +122,20 @@ export const backfillConversationTranslations = async (params: {
     const body = row.body?.trim();
     if (!body || body === "(이미지)" || body === "(예약링크)") continue;
 
-    const translated = await translateCustomerInbound(body, customerLocale);
-    customerLocale = translated.customerLocale;
+    try {
+      const translated = await translateCustomerInbound(body, customerLocale);
+      customerLocale = translated.customerLocale;
 
-    await supabase
-      .from("messages")
-      .update({ translated_body: translated.translated_body })
-      .eq("id", row.id);
+      await supabase
+        .from("messages")
+        .update({
+          translated_body: translated.translated_body,
+          delivery_status: "TRANSLATED",
+        })
+        .eq("id", row.id);
+    } catch (error) {
+      log.error("Backfill translation failed", error, { messageId: row.id });
+    }
   }
 
   if (customerLocale && customerLocale !== conversation.customer_locale) {

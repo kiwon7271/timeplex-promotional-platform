@@ -1,9 +1,8 @@
 "use client";
 
 import { useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { IconDownload, IconEye, IconTrash } from "@tabler/icons-react";
-import { onDeleteDocument, onDownloadDocument } from "@/actions/documents";
+import { apiDelete, apiGet } from "@/lib/api-client";
 import { useDialog } from "@/components/providers/dialog-provider";
 import DropdownMenu from "@/components/ui/dropdown-menu";
 import { ICON_SIZE, ICON_STROKE } from "@/lib/icon-size";
@@ -16,6 +15,7 @@ export interface DocumentChecklistActionsMenuProps {
   label: string;
   previewUrl?: string;
   onClickPreview: () => void;
+  onMutated?: () => void;
 }
 
 /** 매장 심사서류 — 미리보기·다운로드·삭제 메뉴 */
@@ -26,15 +26,15 @@ const DocumentChecklistActionsMenu = ({
   label,
   previewUrl,
   onClickPreview,
+  onMutated,
 }: DocumentChecklistActionsMenuProps) => {
-  const router = useRouter();
   const { openAlert, openConfirm } = useDialog();
   const [pending, startTransition] = useTransition();
 
   const onClickDownloadMenuItem = () => {
     startTransition(async () => {
-      const res = await onDownloadDocument(documentId);
-      if (!res.ok || !res.url) {
+      const res = await apiGet<{ url: string }>(`/api/store/documents/${documentId}/download`);
+      if (!res.ok) {
         await openAlert({
           title: "다운로드 실패",
           message: res.message ?? "파일을 다운로드할 수 없습니다.",
@@ -42,8 +42,17 @@ const DocumentChecklistActionsMenu = ({
         return;
       }
 
+      const url = res.data?.url;
+      if (!url) {
+        await openAlert({
+          title: "다운로드 실패",
+          message: "파일을 다운로드할 수 없습니다.",
+        });
+        return;
+      }
+
       const link = document.createElement("a");
-      link.href = res.url;
+      link.href = url;
       link.download = fileName;
       link.rel = "noopener noreferrer";
       link.target = "_blank";
@@ -62,7 +71,7 @@ const DocumentChecklistActionsMenu = ({
     if (!ok) return;
 
     startTransition(async () => {
-      const res = await onDeleteDocument(documentId, filePath);
+      const res = await apiDelete(`/api/store/documents/${documentId}`, { filePath });
       if (!res.ok) {
         await openAlert({
           title: "삭제 실패",
@@ -70,7 +79,7 @@ const DocumentChecklistActionsMenu = ({
         });
         return;
       }
-      router.refresh();
+      onMutated?.();
     });
   };
 

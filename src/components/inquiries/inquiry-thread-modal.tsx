@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getInquiryThread } from "@/actions/inquiries";
+import { apiGet } from "@/lib/api-client";
 import type { InquiryThreadPayload } from "@/lib/inquiry-thread";
 import { useDialog } from "@/components/providers/dialog-provider";
 import Modal from "@/components/ui/modal";
@@ -23,13 +23,22 @@ const InquiryThreadModal = ({ inquiryId, onClose, onUpdated: onUpdatedProp }: In
   const loadThread = useCallback(async () => {
     if (!inquiryId) return;
     setLoading(true);
-    const res = await getInquiryThread(inquiryId);
+    const res = await apiGet<InquiryThreadPayload>(`/api/inquiries/${inquiryId}/thread`);
     setLoading(false);
 
-    if (!res.ok || !res.data) {
+    if (!res.ok) {
       await openAlert({
         title: "불러오기 실패",
         message: res.message ?? "문의를 불러올 수 없습니다.",
+      });
+      onClose();
+      return;
+    }
+
+    if (!res.data) {
+      await openAlert({
+        title: "불러오기 실패",
+        message: "문의를 불러올 수 없습니다.",
       });
       onClose();
       return;

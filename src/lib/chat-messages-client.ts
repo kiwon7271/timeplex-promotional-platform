@@ -1,12 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
+import { MESSAGE_SELECT } from "@/lib/supabase/query-columns";
 import { BUCKETS } from "@/lib/constants";
 import type { MessageWithAttachments } from "@/types/chat";
-
-const MESSAGE_SELECT = `
-  *,
-  attachments:message_attachments(file_name, file_path),
-  reservation_links:message_reservation_links(provider, url)
-`;
 
 /** 클라이언트 — 첨부 signed URL */
 const attachMessageSignedUrlsClient = async (

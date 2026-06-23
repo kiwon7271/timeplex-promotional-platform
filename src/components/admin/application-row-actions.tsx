@@ -1,8 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { onApproveApplication, onRejectApplication } from "@/actions/applications";
+import { apiDelete, apiPost } from "@/lib/api-client";
 import { APPLICATION_STATUS_OPTIONS } from "@/lib/status-label";
 import { useDialog } from "@/components/providers/dialog-provider";
 import Select from "@/components/ui/select";
@@ -10,11 +9,11 @@ import type { OnboardingApplication } from "@/types/database";
 
 interface ApplicationRowActionsProps {
   app: OnboardingApplication;
+  onMutated?: () => void;
 }
 
 /** 온보딩 신청 — 처리 Select (승인/반려) */
-const ApplicationRowActions = ({ app }: ApplicationRowActionsProps) => {
-  const router = useRouter();
+const ApplicationRowActions = ({ app, onMutated }: ApplicationRowActionsProps) => {
   const { openAlert, openConfirm } = useDialog();
   const [pending, startTransition] = useTransition();
 
@@ -38,12 +37,12 @@ const ApplicationRowActions = ({ app }: ApplicationRowActionsProps) => {
           return;
         }
         startTransition(async () => {
-          const res = await onApproveApplication(app.id);
+          const res = await apiPost(`/api/admin/applications/${app.id}`);
           if (!res.ok && res.message) {
             await openAlert({ title: "승인 실패", message: res.message });
             revert();
           }
-          router.refresh();
+          onMutated?.();
         });
       })();
       return;
@@ -63,12 +62,12 @@ const ApplicationRowActions = ({ app }: ApplicationRowActionsProps) => {
           return;
         }
         startTransition(async () => {
-          const res = await onRejectApplication(app.id);
+          const res = await apiDelete(`/api/admin/applications/${app.id}`);
           if (!res.ok && res.message) {
             await openAlert({ title: "반려 실패", message: res.message });
             revert();
           }
-          router.refresh();
+          onMutated?.();
         });
       })();
     }

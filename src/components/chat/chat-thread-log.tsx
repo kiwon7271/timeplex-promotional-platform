@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/cn";
+import { getDeliveryStatusLabel, isDeliveryFailed, isDeliveryPending } from "@/lib/delivery-status";
 import { isAttachmentPlaceholderBody } from "@/lib/chat-message-utils";
 import {
   getChatBubbleClass,
@@ -132,6 +133,20 @@ const ChatThreadLog = ({
                     고객 전달문 ({customerLanguageLabel}):{" "}
                   </span>
                   {m.translated_body}
+                </p>
+              ) : null}
+
+              {isStore && m.delivery_status ? (
+                <p
+                  className={cn(
+                    "text-[11px] leading-[16px]",
+                    isDeliveryFailed(m.delivery_status) && "text-red-600",
+                    isDeliveryPending(m.delivery_status) && "text-amber-600",
+                    m.delivery_status === "SENT" && "text-gray-500",
+                  )}
+                >
+                  {getDeliveryStatusLabel(m.delivery_status)}
+                  {m.failed_reason ? ` — ${m.failed_reason}` : null}
                 </p>
               ) : null}
 

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { ActionResult } from "@/types/action-result";
 import { requireSuperAdmin } from "@/lib/auth";
+import { ONBOARDING_APPLICATION_COLUMNS, STORE_COLUMNS } from "@/lib/supabase/query-columns";
 import { validatePassword } from "@/lib/password";
 
 /** Supabase(service): Auth 계정 + onboarding_applications — 매장 회원가입(입점 신청) */
@@ -96,7 +97,7 @@ export const onApproveApplication = async (id: string): Promise<ActionResult> =>
 
   const { data: app } = await service
     .from("onboarding_applications")
-    .select("*")
+    .select(ONBOARDING_APPLICATION_COLUMNS)
     .eq("id", id)
     .single();
 
@@ -126,7 +127,7 @@ export const onApproveApplication = async (id: string): Promise<ActionResult> =>
       email: app.email,
       phone: app.phone,
     })
-    .select()
+    .select(STORE_COLUMNS)
     .single();
 
   if (storeError || !store) {
@@ -162,7 +163,7 @@ export const onRejectApplication = async (id: string): Promise<ActionResult> => 
 
   const { data: app } = await service
     .from("onboarding_applications")
-    .select("*")
+    .select(ONBOARDING_APPLICATION_COLUMNS)
     .eq("id", id)
     .single();
 

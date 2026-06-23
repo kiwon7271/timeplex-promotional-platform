@@ -72,6 +72,7 @@ const DocumentChecklistItem = ({
   index,
   uploading,
   onUploadFile,
+  onMutated,
 }: DocumentChecklistItemProps) => {
   const fileRef = useRef<HTMLInputElement>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -129,6 +130,7 @@ const DocumentChecklistItem = ({
                 label={label}
                 previewUrl={document.previewUrl}
                 onClickPreview={onClickPreviewMenuItem}
+                onMutated={onMutated}
               />
             ) : null}
           </div>

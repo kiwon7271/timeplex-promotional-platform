@@ -2,11 +2,7 @@
 
 import { useState } from "react";
 import { IconLink, IconPlus, IconTrash } from "@tabler/icons-react";
-import { useRouter } from "next/navigation";
-import {
-  onCreateReservationLink,
-  onDeleteReservationLink,
-} from "@/actions/stores";
+import { apiDelete, apiPost } from "@/lib/api-client";
 import { RESERVATION_PROVIDERS } from "@/lib/constants";
 import type { ReservationLinkManagerProps } from "@/types/store";
 import ListSection from "@/components/ui/list-section";
@@ -22,13 +18,18 @@ import { getControlIconSize, ICON_SIZE, ICON_STROKE } from "@/lib/icon-size";
 import { useDialog } from "@/components/providers/dialog-provider";
 
 /** 예약 링크 추가/목록/삭제 */
-const ReservationLinkManager = ({ links }: ReservationLinkManagerProps) => {
-  const router = useRouter();
+const ReservationLinkManager = ({ links, onMutated }: ReservationLinkManagerProps) => {
   const { openAlert } = useDialog();
   const [open, setOpen] = useState(false);
 
+  const onDeleteLink = async (id: string) => {
+    const res = await apiDelete("/api/store/reservation-links", { id });
+    if (res.ok) onMutated?.();
+    return res;
+  };
+
   const onCreate = async (formData: FormData) => {
-    const res = await onCreateReservationLink(formData);
+    const res = await apiPost("/api/store/reservation-links", formData);
     if (!res.ok) {
       await openAlert({
         title: "추가 실패",
@@ -37,7 +38,7 @@ const ReservationLinkManager = ({ links }: ReservationLinkManagerProps) => {
       return;
     }
     setOpen(false);
-    router.refresh();
+    onMutated?.();
   };
 
   return (
@@ -68,7 +69,7 @@ const ReservationLinkManager = ({ links }: ReservationLinkManagerProps) => {
                     variant="danger"
                     size="sm"
                     confirm="삭제하시겠습니까?"
-                    onAction={onDeleteReservationLink.bind(null, link.id)}
+                    onAction={() => onDeleteLink(link.id)}
                     icon={
                       <IconTrash size={getControlIconSize("sm")} stroke={ICON_STROKE} />
                     }

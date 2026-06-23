@@ -5,14 +5,13 @@ import { createClient } from "@/lib/supabase/server";
 import { requireStoreUser } from "@/lib/auth";
 import { hasStoreChatConsent } from "@/lib/consent";
 import { attachMessageSignedUrls, MESSAGE_SELECT } from "@/lib/chat-messages";
-import { resolveCustomerLocale, translateStoreOutbound } from "@/lib/chat-translation";
-import { dispatchOutboundMessage } from "@/lib/messenger/outbound-dispatch";
+import { sendStoreMessage } from "@/lib/chat-send-message";
 import { BUCKETS } from "@/lib/constants";
-import { validateImageFile, safeFileName, resolveUploadFileName } from "@/lib/upload";
 import type { ActionResult } from "@/types/action-result";
 import type { MessageWithAttachments } from "@/types/chat";
 import { backfillConversationTranslations } from "@/lib/chat-inbound";
 import { syncLineCustomerProfile } from "@/lib/messenger/line/sync-customer-profile";
+import { resetConversationUnread } from "@/lib/conversation-unread";
 
 export type ConversationMessagesResult = ActionResult & {
   data?: MessageWithAttachments[];
@@ -82,138 +81,38 @@ export const onSyncLineCustomerProfile = async (
   return { ok: true };
 };
 
+/** 대화 열람 — unread_count 초기화 */
+export const onMarkConversationRead = async (conversationId: string): Promise<ActionResult> => {
+  const profile = await requireStoreUser();
+  if (!profile.store_id) return { ok: false, message: "소속 매장이 없습니다." };
+  if (!conversationId) return { ok: false, message: "대화를 선택하세요." };
+
+  await resetConversationUnread(conversationId, profile.store_id);
+  return { ok: true };
+};
+
 /** Supabase: messages INSERT + Storage upload + conversations UPDATE */
 export const onSendMessage = async (formData: FormData): Promise<ActionResult> => {
   const profile = await requireStoreUser();
   if (!profile.store_id) return { ok: false, message: "소속 매장이 없습니다." };
 
-  const conversationId = String(formData.get("conversation_id") ?? "");
-  const body = String(formData.get("body") ?? "").trim();
-  const reservationLinkId = String(formData.get("reservation_link_id") ?? "").trim();
-  const file = formData.get("file") as File | null;
-  const hasFile = !!(file && file.size > 0);
-
-  if (!conversationId) return { ok: false, message: "대화를 선택하세요." };
-  if (!body && !hasFile && !reservationLinkId) {
-    return { ok: false, message: "메시지, 이미지, 예약 링크 중 하나를 입력하세요." };
-  }
-
   const supabase = createClient();
+  const conversationId = String(formData.get("conversation_id") ?? "");
+  const body = String(formData.get("body") ?? "");
+  const file = formData.get("file") as File | null;
+  const reservationLinkId = String(formData.get("reservation_link_id") ?? "");
 
-  const [consented, { data: conversation, error: convError }] = await Promise.all([
-    hasStoreChatConsent(profile.store_id),
-    supabase
-      .from("conversations")
-      .select("store_id, customer_locale, channel, external_thread_id")
-      .eq("id", conversationId)
-      .single(),
-  ]);
+  const result = await sendStoreMessage({
+    supabase,
+    profile,
+    conversationId,
+    body,
+    file: file && file.size > 0 ? file : null,
+    reservationLinkId,
+    formData,
+  });
 
-  if (!consented) {
-    return { ok: false, message: "동의/고지 약관에 동의한 후 메시지를 전송할 수 있습니다." };
-  }
-
-  if (convError || !conversation || conversation.store_id !== profile.store_id) {
-    return { ok: false, message: "대화를 찾을 수 없습니다." };
-  }
-
-  let messageBody = body;
-  if (!messageBody) {
-    if (hasFile) messageBody = "(이미지)";
-    else if (reservationLinkId) messageBody = "(예약링크)";
-  }
-
-  let translatedBody: string | null = null;
-  if (body) {
-    const customerLocale =
-      conversation.customer_locale && conversation.customer_locale !== "ko"
-        ? conversation.customer_locale
-        : await resolveCustomerLocale(supabase, conversationId, conversation.customer_locale);
-    const translated = await translateStoreOutbound(body, customerLocale);
-    translatedBody = translated.translated_body;
-  }
-
-  const { data: message, error } = await supabase
-    .from("messages")
-    .insert({
-      conversation_id: conversationId,
-      sender: "STORE",
-      body: messageBody,
-      translated_body: translatedBody,
-    })
-    .select()
-    .single();
-
-  if (error || !message) return { ok: false, message: error?.message ?? "전송 실패" };
-
-  if (hasFile) {
-    const invalid = validateImageFile(file!);
-    if (invalid) return { ok: false, message: invalid };
-
-    const displayName = resolveUploadFileName(formData, file);
-    const fileName = `${Date.now()}_${safeFileName(displayName)}`;
-    const path = `${profile.store_id}/${conversationId}/${fileName}`;
-    const { error: uploadError } = await supabase.storage
-      .from(BUCKETS.CHAT_ATTACHMENTS)
-      .upload(path, file!, { contentType: file!.type });
-
-    if (uploadError) {
-      console.error("[send message] upload failed:", uploadError.message);
-      return { ok: false, message: `이미지 업로드 실패: ${uploadError.message}` };
-    }
-
-    const { error: attachError } = await supabase.from("message_attachments").insert({
-      message_id: message.id,
-      file_path: path,
-      file_name: displayName,
-    });
-
-    if (attachError) {
-      return { ok: false, message: attachError.message };
-    }
-  }
-
-  if (reservationLinkId) {
-    const { data: link } = await supabase
-      .from("reservation_links")
-      .select("id, provider, url")
-      .eq("id", reservationLinkId)
-      .eq("store_id", profile.store_id)
-      .single();
-
-    if (!link) return { ok: false, message: "예약 링크를 찾을 수 없습니다." };
-
-    const { error: linkError } = await supabase.from("message_reservation_links").insert({
-      message_id: message.id,
-      reservation_link_id: link.id,
-      provider: link.provider,
-      url: link.url,
-    });
-
-    if (linkError) return { ok: false, message: linkError.message };
-  }
-
-  await supabase
-    .from("conversations")
-    .update({ last_message_at: new Date().toISOString() })
-    .eq("id", conversationId);
-
-  if (conversation.channel === "LINE") {
-    const dispatchResult = await dispatchOutboundMessage({
-      conversationId,
-      messageId: message.id,
-      body: messageBody,
-      translatedBody: translatedBody,
-    });
-
-    if (!dispatchResult.ok) {
-      return {
-        ok: false,
-        message: dispatchResult.message ?? "LINE 전송에 실패했습니다. 연결 설정을 확인하세요.",
-      };
-    }
-  }
-
+  if (!result.ok) return { ok: false, message: result.message };
   return { ok: true };
 };
 

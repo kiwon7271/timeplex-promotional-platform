@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { IconTrash } from "@tabler/icons-react";
-import { onCloseConversation } from "@/actions/chats";
+import { apiPost } from "@/lib/api-client";
 import { ICON_SIZE, ICON_STROKE } from "@/lib/icon-size";
 import Button from "@/components/ui/button";
 import { useDialog } from "@/components/providers/dialog-provider";
@@ -38,14 +38,13 @@ const StoreChatCloseButton = ({
 
     setClosing(true);
     try {
-      const res = await onCloseConversation(conversationId);
+      const res = await apiPost(`/api/store/chats/conversations/${conversationId}/close`);
       if (!res.ok) {
         await openAlert({ title: "종료 실패", message: res.message ?? "대화를 종료하지 못했습니다." });
         return;
       }
 
       router.push(redirectPath);
-      router.refresh();
     } finally {
       setClosing(false);
     }

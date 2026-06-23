@@ -2,17 +2,18 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { onAgreeConsentNotices } from "@/actions/consent";
+import { apiPost } from "@/lib/api-client";
 import type { ConsentNotice } from "@/types/database";
 import IntroPopup from "@/components/ui/intro-popup";
 import { useDialog } from "@/components/providers/dialog-provider";
 
 interface StoreChatConsentGateProps {
   notices: ConsentNotice[];
+  onMutated?: () => void;
 }
 
 /** 고객 대화 진입 전 필수 동의/고지 */
-const StoreChatConsentGate = ({ notices }: StoreChatConsentGateProps) => {
+const StoreChatConsentGate = ({ notices, onMutated }: StoreChatConsentGateProps) => {
   const router = useRouter();
   const { openAlert } = useDialog();
   const [loading, setLoading] = useState(false);
@@ -20,7 +21,7 @@ const StoreChatConsentGate = ({ notices }: StoreChatConsentGateProps) => {
 
   const onClickAgree = async () => {
     setLoading(true);
-    const res = await onAgreeConsentNotices();
+    const res = await apiPost("/api/store/consent/agree");
     setLoading(false);
 
     if (!res.ok) {
@@ -28,7 +29,7 @@ const StoreChatConsentGate = ({ notices }: StoreChatConsentGateProps) => {
       return;
     }
 
-    router.refresh();
+    onMutated?.();
   };
 
   const onClickDecline = () => {

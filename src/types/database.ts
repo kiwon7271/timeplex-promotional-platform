@@ -71,6 +71,14 @@ export interface ReservationLink extends Timestamps {
   url: string;
 }
 
+export type MessageDeliveryStatus =
+  | "PENDING"
+  | "TRANSLATING"
+  | "TRANSLATED"
+  | "SENDING"
+  | "SENT"
+  | "FAILED";
+
 export interface Conversation extends Timestamps {
   id: string;
   store_id: string;
@@ -82,6 +90,11 @@ export interface Conversation extends Timestamps {
   last_message_at: string | null;
   customer_locale: string | null;
   external_thread_id: string | null;
+  assigned_user_id: string | null;
+  last_customer_message_at: string | null;
+  last_store_message_at: string | null;
+  unread_count: number;
+  priority: string;
 }
 
 export interface Message extends Timestamps {
@@ -91,6 +104,10 @@ export interface Message extends Timestamps {
   body: string;
   translated_body: string | null;
   external_message_id: string | null;
+  delivery_status: MessageDeliveryStatus | null;
+  delivered_at: string | null;
+  failed_reason: string | null;
+  metadata: Json | null;
 }
 
 export interface MessageAttachment extends Timestamps {

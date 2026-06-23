@@ -2,12 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { fetchConversationMessagesClient } from "@/lib/chat-messages-client";
+import {
+  fetchChatMessagesApi,
+  openChatConversationSessionApi,
+} from "@/lib/chat-api-client";
+import { CONVERSATION_COLUMNS } from "@/lib/supabase/query-columns";
 import type { Conversation } from "@/types/database";
 import type { MessageWithAttachments } from "@/types/chat";
 
-/** Realtime 보조 — 구독 누락 시만 */
-const POLL_INTERVAL_MS = 15_000;
+/** Realtime 보조 — 연결 중에는 폴링 최소화 */
+const POLL_INTERVAL_MS = 60_000;
 
 const toRealtimeMessage = (row: Record<string, unknown>): MessageWithAttachments => ({
   id: String(row.id ?? ""),
@@ -16,47 +20,61 @@ const toRealtimeMessage = (row: Record<string, unknown>): MessageWithAttachments
   body: String(row.body ?? ""),
   translated_body: row.translated_body ? String(row.translated_body) : null,
   external_message_id: row.external_message_id ? String(row.external_message_id) : null,
+  delivery_status: row.delivery_status
+    ? (String(row.delivery_status) as MessageWithAttachments["delivery_status"])
+    : null,
+  delivered_at: row.delivered_at ? String(row.delivered_at) : null,
+  failed_reason: row.failed_reason ? String(row.failed_reason) : null,
+  metadata: null,
   created_at: String(row.created_at ?? new Date().toISOString()),
 });
 
-/** 고객 대화 Realtime — 즉시 반영 + Supabase 직접 조회 */
+/** 고객 대화 — 클라이언트 전환 + Realtime */
 export const useChatRealtime = ({
   storeId,
-  conversationId,
+  initialConversationId,
   initialConversations,
   initialMessages,
   q,
   channel,
+  buildConversationUrl,
 }: {
   storeId: string;
-  conversationId?: string;
+  initialConversationId?: string;
   initialConversations: Conversation[];
   initialMessages: MessageWithAttachments[];
   q?: string;
   channel?: string;
+  buildConversationUrl: (conversationId?: string) => string;
 }) => {
   const [conversations, setConversations] = useState(initialConversations);
+  const [activeConversationId, setActiveConversationId] = useState(initialConversationId);
   const [messages, setMessages] = useState(initialMessages);
-  const conversationIdRef = useRef(conversationId);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+
+  const conversationIdRef = useRef(initialConversationId);
+  const messagesCacheRef = useRef<Record<string, MessageWithAttachments[]>>({});
+  const storeRefreshTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    conversationIdRef.current = conversationId;
-  }, [conversationId]);
+    if (initialConversationId && initialMessages.length > 0) {
+      messagesCacheRef.current[initialConversationId] = initialMessages;
+    }
+    if (initialConversationId) {
+      openChatConversationSessionApi(initialConversationId);
+    }
+  }, [initialConversationId, initialMessages]);
 
   useEffect(() => {
     setConversations(initialConversations);
   }, [initialConversations]);
-
-  useEffect(() => {
-    setMessages(initialMessages);
-  }, [initialMessages]);
 
   const refreshConversations = useCallback(async () => {
     try {
       const supabase = createClient();
       let query = supabase
         .from("conversations")
-        .select("*")
+        .select(CONVERSATION_COLUMNS)
         .eq("store_id", storeId)
         .order("last_message_at", { ascending: false, nullsFirst: false });
 
@@ -74,19 +92,46 @@ export const useChatRealtime = ({
     }
   }, [storeId, q, channel]);
 
-  const refreshMessages = useCallback(async (targetConversationId?: string) => {
-    const activeId = targetConversationId ?? conversationIdRef.current;
-    if (!activeId) return;
+  const loadMessages = useCallback(async (targetConversationId: string, silent = false) => {
+    if (!silent) setLoadingMessages(true);
 
     try {
-      const data = await fetchConversationMessagesClient(activeId);
-      if (activeId === conversationIdRef.current) {
+      const cached = messagesCacheRef.current[targetConversationId];
+      if (cached && conversationIdRef.current === targetConversationId) {
+        setMessages(cached);
+      }
+
+      const data = await fetchChatMessagesApi(targetConversationId);
+      messagesCacheRef.current[targetConversationId] = data;
+
+      if (conversationIdRef.current === targetConversationId) {
         setMessages(data);
       }
     } catch {
       // 기존 값 유지
+    } finally {
+      if (!silent) setLoadingMessages(false);
     }
   }, []);
+
+  const selectConversation = useCallback(
+    (id: string) => {
+      if (conversationIdRef.current === id) return;
+
+      conversationIdRef.current = id;
+      setActiveConversationId(id);
+
+      window.history.replaceState(null, "", buildConversationUrl(id));
+
+      const cached = messagesCacheRef.current[id];
+      setMessages(cached ?? []);
+      setLoadingMessages(!cached);
+
+      openChatConversationSessionApi(id);
+      void loadMessages(id, !!cached);
+    },
+    [buildConversationUrl, loadMessages],
+  );
 
   const appendMessageIfActive = useCallback((row: Record<string, unknown>) => {
     const activeId = conversationIdRef.current;
@@ -96,9 +141,10 @@ export const useChatRealtime = ({
     const incoming = toRealtimeMessage(row);
     setMessages((prev) => {
       if (prev.some((item) => item.id === incoming.id)) return prev;
-      // Realtime 수신 — 낙관적(pending) 메시지 제거
       const withoutPending = prev.filter((item) => !item.id.startsWith("pending-"));
-      return [...withoutPending, incoming];
+      const next = [...withoutPending, incoming];
+      messagesCacheRef.current[activeId] = next;
+      return next;
     });
   }, []);
 
@@ -107,25 +153,54 @@ export const useChatRealtime = ({
     const tempId = `pending-${Date.now()}`;
     if (!activeId) return tempId;
 
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: tempId,
-        conversation_id: activeId,
-        sender: "STORE",
-        body,
-        translated_body: null,
-        external_message_id: null,
-        created_at: new Date().toISOString(),
-      },
-    ]);
+    setMessages((prev) => {
+      const next: MessageWithAttachments[] = [
+        ...prev,
+        {
+          id: tempId,
+          conversation_id: activeId,
+          sender: "STORE",
+          body,
+          translated_body: null,
+          external_message_id: null,
+          delivery_status: "PENDING",
+          delivered_at: null,
+          failed_reason: null,
+          metadata: null,
+          created_at: new Date().toISOString(),
+        },
+      ];
+      messagesCacheRef.current[activeId] = next;
+      return next;
+    });
 
     return tempId;
   }, []);
 
   const removeOptimisticMessage = useCallback((tempId: string) => {
-    setMessages((prev) => prev.filter((item) => item.id !== tempId));
+    const activeId = conversationIdRef.current;
+    setMessages((prev) => {
+      const next = prev.filter((item) => item.id !== tempId);
+      if (activeId) messagesCacheRef.current[activeId] = next;
+      return next;
+    });
   }, []);
+
+  const confirmOptimisticStoreMessage = useCallback(
+    (tempId: string, message: MessageWithAttachments) => {
+      const activeId = conversationIdRef.current;
+      setMessages((prev) => {
+        const next = [
+          ...prev.filter((item) => item.id !== tempId && item.id !== message.id),
+          message,
+        ];
+        if (activeId) messagesCacheRef.current[activeId] = next;
+        return next;
+      });
+      void refreshConversations();
+    },
+    [refreshConversations],
+  );
 
   const patchMessageIfActive = useCallback((row: Record<string, unknown>) => {
     const activeId = conversationIdRef.current;
@@ -138,19 +213,65 @@ export const useChatRealtime = ({
       if (index === -1) return prev;
       const next = [...prev];
       next[index] = { ...next[index], ...incoming };
+      messagesCacheRef.current[activeId] = next;
       return next;
     });
   }, []);
 
+  const scheduleStoreMessageRefresh = useCallback(() => {
+    const activeId = conversationIdRef.current;
+    if (!activeId) return;
+
+    if (storeRefreshTimerRef.current) window.clearTimeout(storeRefreshTimerRef.current);
+    storeRefreshTimerRef.current = window.setTimeout(() => {
+      void loadMessages(activeId, true);
+      storeRefreshTimerRef.current = null;
+    }, 400);
+  }, [loadMessages]);
+
+  // 대화 목록 Realtime
   useEffect(() => {
     const supabase = createClient();
-    const channelName = `store-chat-${storeId}`;
+    const channelName = `store-conversations-${storeId}`;
+
+    const realtimeChannel = supabase
+      .channel(channelName)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "conversations",
+          filter: `store_id=eq.${storeId}`,
+        },
+        () => {
+          void refreshConversations();
+        },
+      )
+      .subscribe();
+
+    const pollId = window.setInterval(() => {
+      void refreshConversations();
+    }, POLL_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(pollId);
+      void supabase.removeChannel(realtimeChannel);
+    };
+  }, [storeId, refreshConversations]);
+
+  // 메시지 Realtime — activeConversationId 기준
+  useEffect(() => {
+    if (!activeConversationId) return;
+
+    const supabase = createClient();
+    const channelName = `store-messages-${activeConversationId}`;
 
     const onMessageInsert = (payload: { new: Record<string, unknown> }) => {
       const sender = String(payload.new.sender ?? "");
-      // 매장 발신(첨부·링크) — Realtime row만으로는 관계 데이터 없음 → refetch
       if (sender === "STORE") {
-        void refreshMessages();
+        appendMessageIfActive(payload.new);
+        scheduleStoreMessageRefresh();
       } else {
         appendMessageIfActive(payload.new);
       }
@@ -167,21 +288,10 @@ export const useChatRealtime = ({
       .on(
         "postgres_changes",
         {
-          event: "*",
-          schema: "public",
-          table: "conversations",
-          filter: `store_id=eq.${storeId}`,
-        },
-        () => {
-          void refreshConversations();
-        },
-      )
-      .on(
-        "postgres_changes",
-        {
           event: "INSERT",
           schema: "public",
           table: "messages",
+          filter: `conversation_id=eq.${activeConversationId}`,
         },
         onMessageInsert,
       )
@@ -191,40 +301,36 @@ export const useChatRealtime = ({
           event: "UPDATE",
           schema: "public",
           table: "messages",
+          filter: `conversation_id=eq.${activeConversationId}`,
         },
         onMessageUpdate,
       )
       .subscribe();
 
-    const pollId = window.setInterval(() => {
-      void refreshConversations();
-      void refreshMessages();
-    }, POLL_INTERVAL_MS);
-
-    const onVisible = () => {
-      if (document.visibilityState === "visible") {
-        void refreshConversations();
-        void refreshMessages();
-      }
-    };
-
-    window.addEventListener("focus", refreshConversations);
-    document.addEventListener("visibilitychange", onVisible);
-
     return () => {
-      window.clearInterval(pollId);
-      window.removeEventListener("focus", refreshConversations);
-      document.removeEventListener("visibilitychange", onVisible);
+      if (storeRefreshTimerRef.current) {
+        window.clearTimeout(storeRefreshTimerRef.current);
+        storeRefreshTimerRef.current = null;
+      }
       void supabase.removeChannel(realtimeChannel);
     };
-  }, [storeId, appendMessageIfActive, patchMessageIfActive, refreshConversations, refreshMessages]);
+  }, [
+    activeConversationId,
+    appendMessageIfActive,
+    patchMessageIfActive,
+    refreshConversations,
+    scheduleStoreMessageRefresh,
+  ]);
 
   return {
     conversations,
     messages,
-    refreshMessages,
+    activeConversationId,
+    loadingMessages,
+    selectConversation,
     refreshConversations,
     appendOptimisticStoreMessage,
     removeOptimisticMessage,
+    confirmOptimisticStoreMessage,
   };
 };

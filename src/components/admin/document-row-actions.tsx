@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { onUpdateDocumentStatus } from "@/actions/documents";
+import { apiPatch } from "@/lib/api-client";
 import { DOCUMENT_STATUS_OPTIONS } from "@/lib/status-label";
 import type { StoreDocumentWithUrl } from "@/lib/store-documents";
 import { useDialog } from "@/components/providers/dialog-provider";
@@ -14,6 +13,7 @@ import Button from "@/components/ui/button";
 
 interface DocumentRowActionsProps {
   doc: StoreDocumentWithUrl;
+  onMutated?: () => void;
 }
 
 /** 현재 상태에서 선택 가능한 옵션 — 승인 후 반려·반려 후 재승인 허용 */
@@ -28,8 +28,7 @@ const getDocumentStatusOptions = (current: string) => {
 };
 
 /** 매장 서류 — 승인/반려 처리 (반려 시 사유 필수) */
-const DocumentRowActions = ({ doc }: DocumentRowActionsProps) => {
-  const router = useRouter();
+const DocumentRowActions = ({ doc, onMutated }: DocumentRowActionsProps) => {
   const { openAlert, openConfirm } = useDialog();
   const [pending, startTransition] = useTransition();
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -58,13 +57,13 @@ const DocumentRowActions = ({ doc }: DocumentRowActionsProps) => {
           return;
         }
         startTransition(async () => {
-          const res = await onUpdateDocumentStatus(doc.id, "APPROVED");
+          const res = await apiPatch(`/api/admin/documents/${doc.id}`, { status: "APPROVED" });
           if (!res.ok && res.message) {
             await openAlert({ title: "승인 실패", message: res.message });
             revertSelect(e.target);
             return;
           }
-          router.refresh();
+          onMutated?.();
         });
       })();
       return;
@@ -85,14 +84,17 @@ const DocumentRowActions = ({ doc }: DocumentRowActionsProps) => {
     }
 
     startTransition(async () => {
-      const res = await onUpdateDocumentStatus(doc.id, "REJECTED", trimmed);
+      const res = await apiPatch(`/api/admin/documents/${doc.id}`, {
+        status: "REJECTED",
+        rejectionReason: trimmed,
+      });
       if (!res.ok && res.message) {
         await openAlert({ title: "반려 실패", message: res.message });
         return;
       }
       setRejectOpen(false);
       setRejectReason("");
-      router.refresh();
+      onMutated?.();
     });
   };
 

@@ -13,6 +13,8 @@ const AdminChatLogLayout = ({
   messages,
   storeId,
   conversationId,
+  listPage,
+  listTotalPages,
 }: AdminChatLogLayoutProps) => {
   const router = useRouter();
 
@@ -47,6 +49,13 @@ const AdminChatLogLayout = ({
       conversationId={conversationId}
       onSelectConversation={onSelectConversation}
       listPlaceholder={storeId ? undefined : "매장을 선택하세요."}
+      listPage={listPage}
+      listTotalPages={listTotalPages}
+      listBasePath="/admin/chats"
+      listQuery={{
+        store: storeId,
+        conversation: conversationId,
+      }}
     />
   );
 };

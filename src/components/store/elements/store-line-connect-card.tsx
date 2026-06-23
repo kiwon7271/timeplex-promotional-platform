@@ -2,10 +2,7 @@
 
 import { useState } from "react";
 import { IconCopy, IconPlugConnected } from "@tabler/icons-react";
-import {
-  onConnectLineChannel,
-  onDisconnectLineChannel,
-} from "@/actions/channel-connections";
+import { apiDelete, apiPost } from "@/lib/api-client";
 import {
   CHANNEL_CONNECTION_STATUS_LABEL,
   type ChannelConnectionStatus,
@@ -26,6 +23,7 @@ interface StoreLineConnectCardProps {
   connection?: StoreChannelConnection;
   lineWebhookUrl: string;
   lineDiagnostic: LineConnectionDiagnostic;
+  onMutated?: () => void;
 }
 
 /** LINE 연결 카드 — Webhook URL 안내 + credential 입력 */
@@ -33,6 +31,7 @@ const StoreLineConnectCard = ({
   connection,
   lineWebhookUrl,
   lineDiagnostic,
+  onMutated,
 }: StoreLineConnectCardProps) => {
   const { openAlert, openConfirm } = useDialog();
   const [open, setOpen] = useState(false);
@@ -61,7 +60,7 @@ const StoreLineConnectCard = ({
   const onSubmitConnect = async (formData: FormData) => {
     setSaving(true);
     try {
-      const res = await onConnectLineChannel(formData);
+      const res = await apiPost("/api/store/channels/line", formData);
       if (!res.ok) {
         await openAlert({ title: "연결 실패", message: res.message ?? "연결 실패" });
         return;
@@ -73,6 +72,7 @@ const StoreLineConnectCard = ({
           "LINE Developers Console에 Webhook URL을 등록하고 Verify 후 Use webhook을 켜 주세요.",
       });
       setOpen(false);
+      onMutated?.();
     } finally {
       setSaving(false);
     }
@@ -88,10 +88,12 @@ const StoreLineConnectCard = ({
 
     setSaving(true);
     try {
-      const res = await onDisconnectLineChannel();
+      const res = await apiDelete("/api/store/channels/line");
       if (!res.ok) {
         await openAlert({ title: "해제 실패", message: res.message ?? "해제 실패" });
+        return;
       }
+      onMutated?.();
     } finally {
       setSaving(false);
     }

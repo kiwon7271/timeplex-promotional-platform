@@ -2,11 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { IconDeviceFloppy, IconPencil, IconTrash, IconX } from "@tabler/icons-react";
-import {
-  onDeleteInquiryMessage,
-  onUpdateInquiryMessage,
-  onUpdateInquiryOpening,
-} from "@/actions/inquiries";
+import { apiDelete, apiPatch } from "@/lib/api-client";
 import {
   canDeleteInquiryPost,
   canEditInquiryPost,
@@ -99,13 +95,12 @@ const InquiryPostItem = ({ post, thread, onUpdated }: InquiryPostItemProps) => {
 
     startTransition(async () => {
       const res = post.isOpening
-        ? await onUpdateInquiryOpening(
-            thread.inquiry.id,
-            titleDraft,
-            trimmed,
-            categoryDraft,
-          )
-        : await onUpdateInquiryMessage(post.id, trimmed);
+        ? await apiPatch(`/api/store/inquiries/${thread.inquiry.id}/opening`, {
+            title: titleDraft.trim(),
+            body: trimmed,
+            category: categoryDraft,
+          })
+        : await apiPatch(`/api/inquiries/messages/${post.id}`, { body: trimmed });
 
       if (!res.ok) {
         await openAlert({
@@ -121,7 +116,7 @@ const InquiryPostItem = ({ post, thread, onUpdated }: InquiryPostItemProps) => {
   };
 
   const onDeleteAction = async () => {
-    const res = await onDeleteInquiryMessage(post.id);
+    const res = await apiDelete(`/api/inquiries/messages/${post.id}`);
     if (res.ok) onUpdated();
     return res;
   };

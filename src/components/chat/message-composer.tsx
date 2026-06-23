@@ -2,7 +2,7 @@
 
 import { useRef, useState, type KeyboardEvent } from "react";
 import { IconLink, IconPaperclip, IconSend, IconX } from "@tabler/icons-react";
-import { onSendMessage } from "@/actions/chats";
+import { sendChatMessageApi } from "@/lib/chat-api-client";
 import { validateImageFile, normalizeUploadFileName, appendDisplayFileName, IMAGE_UPLOAD_HINT } from "@/lib/upload";
 import {
   RESERVATION_PROVIDER_LABEL,
@@ -38,6 +38,7 @@ const MessageComposer = ({
   onSentMessage,
   onOptimisticSend,
   onOptimisticRollback,
+  onConfirmSent,
 }: MessageComposerProps) => {
   const { openAlert } = useDialog();
   const formRef = useRef<HTMLFormElement>(null);
@@ -105,7 +106,7 @@ const MessageComposer = ({
     }
 
     try {
-      const res = await onSendMessage(formData);
+      const res = await sendChatMessageApi(formData);
       if (!res.ok) {
         if (optimisticId && onOptimisticRollback) {
           onOptimisticRollback(optimisticId);
@@ -117,14 +118,16 @@ const MessageComposer = ({
         return;
       }
 
+      if (optimisticId && res.data && onConfirmSent) {
+        onConfirmSent(optimisticId, res.data);
+      }
+
       if (!isTextOnly) {
         formRef.current?.reset();
         setFileName(null);
         setSelectedLink(null);
         focusMessageInput();
       }
-
-      onSentMessage?.();
     } finally {
       submittingRef.current = false;
       setSending(false);

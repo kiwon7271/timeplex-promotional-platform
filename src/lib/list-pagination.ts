@@ -1,6 +1,9 @@
 /** 목록 공통 — 페이지당 건수 */
 export const DEFAULT_LIST_PAGE_SIZE = 10;
 
+/** 관리자 대용량 목록 — spec 기준 50건 */
+export const ADMIN_LIST_PAGE_SIZE = 50;
+
 export const parseListPage = (value?: string) => {
   const page = Number(value);
   return Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1;

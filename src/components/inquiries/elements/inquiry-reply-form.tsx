@@ -2,7 +2,7 @@
 
 import { useRef, useTransition } from "react";
 import { IconSend } from "@tabler/icons-react";
-import { onPostInquiryMessage } from "@/actions/inquiries";
+import { apiPost } from "@/lib/api-client";
 import { useDialog } from "@/components/providers/dialog-provider";
 import Field from "@/components/ui/field";
 import Textarea from "@/components/ui/textarea";
@@ -23,7 +23,7 @@ const InquiryReplyForm = ({ inquiryId, isAdmin = false, onPosted }: InquiryReply
 
   const onSubmit = (formData: FormData) => {
     startTransition(async () => {
-      const res = await onPostInquiryMessage(formData);
+      const res = await apiPost(`/api/inquiries/${inquiryId}/messages`, formData);
       if (!res.ok) {
         await openAlert({
           title: "등록 실패",

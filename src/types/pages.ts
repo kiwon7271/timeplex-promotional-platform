@@ -1,9 +1,9 @@
 export interface AdminChatsPageProps {
-  searchParams: { store?: string; conversation?: string };
+  searchParams: { store?: string; conversation?: string; page?: string };
 }
 
 export interface StoreChatsPageProps {
-  searchParams: { q?: string; channel?: string; conversation?: string };
+  searchParams: { q?: string; channel?: string; conversation?: string; page?: string };
 }
 
 export interface StoreInquiriesPageProps {

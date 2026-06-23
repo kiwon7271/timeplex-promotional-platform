@@ -8,8 +8,7 @@ import {
   IconMapPin,
   IconPhone,
 } from "@tabler/icons-react";
-import { useRouter } from "next/navigation";
-import { onUpdateStoreInfo } from "@/actions/stores";
+import { apiPost } from "@/lib/api-client";
 import type { StoreInfoFormProps } from "@/types/store";
 import ListSection from "@/components/ui/list-section";
 import Field from "@/components/ui/field";
@@ -21,13 +20,12 @@ import { ICON_SIZE, ICON_STROKE } from "@/lib/icon-size";
 import { useDialog } from "@/components/providers/dialog-provider";
 
 /** 매장 기본 정보 수정 폼 (이메일 readonly) */
-const StoreInfoForm = ({ store }: StoreInfoFormProps) => {
-  const router = useRouter();
+const StoreInfoForm = ({ store, onMutated }: StoreInfoFormProps) => {
   const { openAlert } = useDialog();
   const [saved, setSaved] = useState(false);
 
   const onSubmit = async (formData: FormData) => {
-    const res = await onUpdateStoreInfo(formData);
+    const res = await apiPost("/api/store/info", formData);
     if (!res.ok) {
       await openAlert({
         title: "저장 실패",
@@ -36,7 +34,7 @@ const StoreInfoForm = ({ store }: StoreInfoFormProps) => {
       return;
     }
     setSaved(true);
-    router.refresh();
+    onMutated?.();
   };
 
   return (

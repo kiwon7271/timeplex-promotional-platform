@@ -7,13 +7,8 @@ import {
   IconPlus,
   IconTrash,
 } from "@tabler/icons-react";
-import { useRouter } from "next/navigation";
+import { apiDelete, apiPost } from "@/lib/api-client";
 import { motion } from "motion/react";
-import {
-  onCreateConsentNotice,
-  onUpdateConsentNotice,
-  onDeleteConsentNotice,
-} from "@/actions/settings";
 import type { ConsentNotice } from "@/types/database";
 import type { ConsentManagerProps } from "@/types/admin";
 import ListSection from "@/components/ui/list-section";
@@ -33,8 +28,8 @@ import { getControlIconSize, ICON_SIZE, ICON_STROKE } from "@/lib/icon-size";
 import { useDialog } from "@/components/providers/dialog-provider";
 
 /** 동의/고지 문구 목록 및 생성/수정 모달 */
-const ConsentManager = ({ notices }: ConsentManagerProps) => {
-  const router = useRouter();
+const ConsentManager = ({ notices, onMutated }: ConsentManagerProps) => {
+  const onRefresh = () => onMutated?.();
   const { openAlert } = useDialog();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ConsentNotice | null>(null);
@@ -50,9 +45,7 @@ const ConsentManager = ({ notices }: ConsentManagerProps) => {
   };
 
   const onSubmit = async (formData: FormData) => {
-    const res = editing
-      ? await onUpdateConsentNotice(formData)
-      : await onCreateConsentNotice(formData);
+    const res = await apiPost("/api/admin/settings/consent", formData);
     if (!res.ok) {
       await openAlert({
         title: "처리 실패",
@@ -62,7 +55,7 @@ const ConsentManager = ({ notices }: ConsentManagerProps) => {
     }
     setOpen(false);
     setEditing(null);
-    router.refresh();
+    onRefresh();
   };
 
   return (
@@ -108,7 +101,11 @@ const ConsentManager = ({ notices }: ConsentManagerProps) => {
                       variant="danger"
                       size="md"
                       confirm="삭제하시겠습니까?"
-                      onAction={onDeleteConsentNotice.bind(null, n.id)}
+                      onAction={async () => {
+                        const res = await apiDelete(`/api/admin/settings/consent/${n.id}`);
+                        if (res.ok) onRefresh();
+                        return res;
+                      }}
                       icon={
                         <IconTrash size={getControlIconSize("md")} stroke={ICON_STROKE} />
                       }

@@ -1,8 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { onUploadDocument, onDeleteDocument } from "@/actions/documents";
+import { apiDelete, apiPost } from "@/lib/api-client";
 import { DOCUMENT_TYPES, CARD_REVIEW_DOCUMENT_GUIDE_STORE, CARD_REVIEW_DOCUMENT_PURPOSE } from "@/lib/constants";
 import type { DocumentType } from "@/lib/constants";
 import { countAttachedDocumentTypes, groupLatestDocumentsByType } from "@/lib/document-checklist";
@@ -14,8 +13,7 @@ import DocumentChecklistItem from "@/components/store/elements/document-checklis
 import { useDialog } from "@/components/providers/dialog-provider";
 
 /** 매장 서류 — 8종 체크리스트 업로드 */
-const DocumentManager = ({ documents }: DocumentManagerProps) => {
-  const router = useRouter();
+const DocumentManager = ({ documents, onMutated }: DocumentManagerProps) => {
   const { openAlert } = useDialog();
   const [uploadingType, setUploadingType] = useState<DocumentType | null>(null);
 
@@ -32,7 +30,9 @@ const DocumentManager = ({ documents }: DocumentManagerProps) => {
 
     const existing = documentsByType[docType];
     if (existing?.status === "REJECTED") {
-      const delRes = await onDeleteDocument(existing.id, existing.file_path);
+      const delRes = await apiDelete(`/api/store/documents/${existing.id}`, {
+        filePath: existing.file_path,
+      });
       if (!delRes.ok) {
         await openAlert({
           title: "재제출 실패",
@@ -48,7 +48,7 @@ const DocumentManager = ({ documents }: DocumentManagerProps) => {
     appendDisplayFileName(formData, file);
 
     setUploadingType(docType);
-    const res = await onUploadDocument(formData);
+    const res = await apiPost("/api/store/documents/upload", formData);
     setUploadingType(null);
 
     if (!res.ok) {
@@ -59,7 +59,7 @@ const DocumentManager = ({ documents }: DocumentManagerProps) => {
       return;
     }
 
-    router.refresh();
+    onMutated?.();
   };
 
   return (
@@ -102,6 +102,7 @@ const DocumentManager = ({ documents }: DocumentManagerProps) => {
               index={index}
               uploading={uploadingType === docType}
               onUploadFile={onUploadFile}
+              onMutated={onMutated}
             />
           ))}
         </ol>

@@ -2,8 +2,7 @@
 
 import { useRef, useState } from "react";
 import { IconMessagePlus, IconPlus } from "@tabler/icons-react";
-import { useRouter } from "next/navigation";
-import { onCreateInquiry } from "@/actions/inquiries";
+import { apiPost } from "@/lib/api-client";
 import { INQUIRY_CATEGORY_OPTIONS } from "@/lib/inquiry-category";
 import Field from "@/components/ui/field";
 import Input from "@/components/ui/input";
@@ -14,15 +13,18 @@ import Modal from "@/components/ui/modal";
 import { ICON_SIZE, ICON_STROKE } from "@/lib/icon-size";
 import { useDialog } from "@/components/providers/dialog-provider";
 
+interface InquiryCreateButtonProps {
+  onMutated?: () => void;
+}
+
 /** 매장 — 문의 작성 */
-const InquiryCreateButton = () => {
-  const router = useRouter();
+const InquiryCreateButton = ({ onMutated }: InquiryCreateButtonProps) => {
   const { openAlert } = useDialog();
   const formRef = useRef<HTMLFormElement>(null);
   const [open, setOpen] = useState(false);
 
   const onCreate = async (formData: FormData) => {
-    const res = await onCreateInquiry(formData);
+    const res = await apiPost("/api/store/inquiries/create", formData);
     if (!res.ok) {
       await openAlert({
         title: "등록 실패",
@@ -32,7 +34,7 @@ const InquiryCreateButton = () => {
     }
     formRef.current?.reset();
     setOpen(false);
-    router.refresh();
+    onMutated?.();
   };
 
   return (

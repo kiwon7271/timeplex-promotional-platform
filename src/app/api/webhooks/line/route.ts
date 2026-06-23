@@ -6,6 +6,7 @@ import {
 } from "@/lib/messenger/line/connection-lookup";
 import type { LineWebhookBody } from "@/lib/messenger/line/types";
 import { verifyLineSignature } from "@/lib/messenger/line/verify-signature";
+import { captureRouteError, captureWebhookError, log } from "@/lib/logger";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -47,12 +48,10 @@ export async function POST(request: Request) {
   });
 
   if (!connection.ok) {
-    console.error(
-      "[LINE webhook] connection resolve failed:",
-      connection.reason,
-      connection.message,
+    captureWebhookError("LINE", new Error(connection.message), {
+      reason: connection.reason,
       destination,
-    );
+    });
     return NextResponse.json(
       {
         ok: false,
@@ -64,7 +63,7 @@ export async function POST(request: Request) {
   }
 
   if (!verifyLineSignature(rawBody, signature, connection.channelSecret)) {
-    console.error("[LINE webhook] invalid signature for destination:", destination);
+    captureWebhookError("LINE", new Error("invalid signature"), { destination });
     return NextResponse.json({ message: "invalid signature" }, { status: 401 });
   }
 
@@ -79,17 +78,16 @@ export async function POST(request: Request) {
     const result = await handleLineWebhook(payload);
 
     if (!result.ok) {
-      console.error("[LINE webhook] handle failed:", result.message);
+      captureWebhookError("LINE", new Error(result.message), { destination, reason: result.reason });
       // LINE 재전송 폭주 방지 — 처리 실패해도 200 (오류는 DB·로그에 기록됨)
       return NextResponse.json({ ok: true, warning: result.message });
     }
 
-    console.info(
-      "[LINE webhook] ok destination=%s processed=%d skipped=%d",
+    log.info("LINE webhook processed", {
       destination,
-      result.processed,
-      result.skipped,
-    );
+      processed: result.processed,
+      skipped: result.skipped,
+    });
 
     return NextResponse.json({
       ok: true,
@@ -98,7 +96,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "internal error";
-    console.error("[LINE webhook] unhandled error:", message);
+    captureRouteError("/api/webhooks/line", error, { destination });
     await recordLineWebhookActivity(destination, `처리 오류: ${message}`, true);
     return NextResponse.json({ ok: true, warning: message });
   }

@@ -28,6 +28,8 @@ export interface MessageComposerProps {
   onOptimisticSend?: (body: string) => string;
   /** 전송 실패 — 낙관적 메시지 제거 */
   onOptimisticRollback?: (tempId: string) => void;
+  /** 전송 성공 — 낙관적 메시지를 서버 응답으로 교체 */
+  onConfirmSent?: (tempId: string, message: MessageWithAttachments) => void;
 }
 
 export interface ChatThreadLogProps {
@@ -53,4 +55,11 @@ export interface ChatLogLayoutProps {
   composer?: ReactNode;
   /** 선택된 대화 헤더 우측 액션 (종료 등) */
   conversationActions?: ReactNode;
+  /** 메시지 로딩 중 */
+  loadingMessages?: boolean;
+  /** 대화 목록 페이징 */
+  listPage?: number;
+  listTotalPages?: number;
+  listBasePath?: string;
+  listQuery?: Record<string, string | undefined>;
 }

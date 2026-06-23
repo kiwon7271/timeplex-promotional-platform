@@ -19,6 +19,7 @@ interface StoreChannelConnectPanelProps {
   lineDiagnostic: LineConnectionDiagnostic;
   /** 모달 내부 — 바깥 테두리 제거 */
   embedded?: boolean;
+  onMutated?: () => void;
 }
 
 const getConnectionStatus = (
@@ -38,6 +39,7 @@ const StoreChannelConnectPanel = ({
   lineWebhookUrl,
   lineDiagnostic,
   embedded = false,
+  onMutated,
 }: StoreChannelConnectPanelProps) => (
   <div className={embedded ? "space-y-3" : "rounded-lg border border-gray-200 bg-white p-4"}>
     <div className="mb-3">
@@ -77,6 +79,7 @@ const StoreChannelConnectPanel = ({
         connection={getConnection(connections, "LINE")}
         lineWebhookUrl={lineWebhookUrl}
         lineDiagnostic={lineDiagnostic}
+        onMutated={onMutated}
       />
     </ul>
   </div>

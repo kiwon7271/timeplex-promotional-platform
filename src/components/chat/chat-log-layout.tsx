@@ -8,6 +8,7 @@ import Badge from "@/components/ui/badge";
 import EmptyState from "@/components/ui/empty-state";
 import ChatThreadLog from "@/components/chat/chat-thread-log";
 import ClientDateTime from "@/components/chat/elements/client-date-time";
+import ListPagination from "@/components/ui/list-pagination";
 
 const panelHeaderClass =
   "flex h-12 shrink-0 items-center gap-2 border-b border-gray-200 px-4";
@@ -22,6 +23,11 @@ const ChatLogLayout = ({
   listPlaceholder,
   composer,
   conversationActions,
+  loadingMessages,
+  listPage,
+  listTotalPages,
+  listBasePath,
+  listQuery,
 }: ChatLogLayoutProps) => {
   const logScrollRef = useRef<HTMLDivElement>(null);
   const mediaScrollTimerRef = useRef<number | null>(null);
@@ -78,8 +84,13 @@ const ChatLogLayout = ({
                               : "text-gray-800 hover:bg-gray-50",
                           )}
                         >
-                          <p className="text-[14px] font-medium leading-[20px]">
-                            {c.customer_name ?? "고객"}
+                          <p className="flex items-center justify-between gap-2 text-[14px] font-medium leading-[20px]">
+                            <span className="truncate">{c.customer_name ?? "고객"}</span>
+                            {!active && (c.unread_count ?? 0) > 0 ? (
+                              <span className="shrink-0 rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                                {c.unread_count > 99 ? "99+" : c.unread_count}
+                              </span>
+                            ) : null}
                           </p>
                           <div className="mt-1 flex flex-wrap items-center gap-1.5">
                             <Badge value={c.channel} />
@@ -100,6 +111,16 @@ const ChatLogLayout = ({
               ) : (
                 <EmptyState plain message="대화가 없습니다." />
               )}
+              {listBasePath && listTotalPages && listTotalPages > 1 && listPage ? (
+                <ListPagination
+                  className="border-t border-gray-100 p-2"
+                  basePath={listBasePath}
+                  page={listPage}
+                  totalPages={listTotalPages}
+                  query={listQuery}
+                  size="sm"
+                />
+              ) : null}
             </div>
           </aside>
 
@@ -136,13 +157,19 @@ const ChatLogLayout = ({
               className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-gray-50 p-4"
             >
               {conversationId ? (
-                <ChatThreadLog
-                  key={conversationId}
-                  messages={messages}
-                  customerName={selectedConversation?.customer_name ?? undefined}
-                  customerLocale={selectedConversation?.customer_locale}
-                  onMediaLoad={onMediaLoad}
-                />
+                loadingMessages && messages.length === 0 ? (
+                  <div className="flex h-full min-h-[160px] items-center justify-center">
+                    <p className="text-[13px] text-gray-500">메시지 불러오는 중…</p>
+                  </div>
+                ) : (
+                  <ChatThreadLog
+                    key={conversationId}
+                    messages={messages}
+                    customerName={selectedConversation?.customer_name ?? undefined}
+                    customerLocale={selectedConversation?.customer_locale}
+                    onMediaLoad={onMediaLoad}
+                  />
+                )
               ) : (
                 <div className="flex h-full min-h-[160px] items-center justify-center">
                   <EmptyState plain message="좌측에서 대화를 선택하세요." />

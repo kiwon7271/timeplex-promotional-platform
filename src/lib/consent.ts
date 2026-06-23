@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { CONSENT_NOTICE_COLUMNS } from "@/lib/supabase/query-columns";
 import type { ConsentNotice } from "@/types/database";
 
 /** 활성 동의/고지 문구 목록 */
@@ -6,7 +7,7 @@ export const getActiveConsentNotices = async (): Promise<ConsentNotice[]> => {
   const supabase = createClient();
   const { data } = await supabase
     .from("consent_notices")
-    .select("*")
+    .select(CONSENT_NOTICE_COLUMNS)
     .eq("is_active", true)
     .order("created_at", { ascending: true });
 

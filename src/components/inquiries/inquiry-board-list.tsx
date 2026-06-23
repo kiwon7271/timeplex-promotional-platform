@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { IconTrash } from "@tabler/icons-react";
-import { onDeleteInquiry } from "@/actions/inquiries";
+import { apiDelete } from "@/lib/api-client";
 import type { Inquiry } from "@/types/database";
 import { formatDateTime } from "@/lib/format-datetime";
 import { getInquiryListQuery, getInquiryRowNumber } from "@/lib/inquiry-board";
@@ -31,6 +30,7 @@ export interface InquiryBoardListProps {
   emptyMessage?: string;
   /** 매장 목록 — 문의 전체 삭제 버튼 표시 */
   deletable?: boolean;
+  onMutated?: () => void;
 }
 
 /** 문의 게시판 — 목록 + 스레드 모달 */
@@ -45,8 +45,8 @@ const InquiryBoardList = ({
   storeNames,
   emptyMessage = "문의가 없습니다.",
   deletable = false,
+  onMutated,
 }: InquiryBoardListProps) => {
-  const router = useRouter();
   const [openInquiryId, setOpenInquiryId] = useState<string | null>(null);
   const showStore = Boolean(storeNames);
   const listQuery = getInquiryListQuery(category);
@@ -62,18 +62,18 @@ const InquiryBoardList = ({
 
   const onCloseInquiryModal = () => {
     setOpenInquiryId(null);
-    router.refresh();
+    onMutated?.();
   };
 
   const onUpdatedInquiryThread = () => {
-    router.refresh();
+    onMutated?.();
   };
 
   const onDeleteInquiryAction = async (id: string) => {
-    const res = await onDeleteInquiry(id);
+    const res = await apiDelete(`/api/store/inquiries/${id}`);
     if (res.ok) {
       if (openInquiryId === id) setOpenInquiryId(null);
-      router.refresh();
+      onMutated?.();
     }
     return res;
   };

@@ -4,6 +4,7 @@ import type { StoreDocumentWithUrl } from "@/lib/store-documents";
 
 export interface ConsentManagerProps {
   notices: ConsentNotice[];
+  onMutated?: () => void;
 }
 
 export interface StoreMemberRow {
@@ -31,4 +32,6 @@ export interface AdminChatLogLayoutProps {
   messages: MessageWithAttachments[];
   storeId?: string;
   conversationId?: string;
+  listPage?: number;
+  listTotalPages?: number;
 }

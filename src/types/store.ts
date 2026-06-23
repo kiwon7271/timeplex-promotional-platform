@@ -35,10 +35,13 @@ export interface StoreChatLiveLayoutProps extends StoreChatLogLayoutProps {
   storeId: string;
   /** 번역 API 설정 여부 — 가이드·입력 placeholder */
   translationEnabled: boolean;
+  listPage?: number;
+  listTotalPages?: number;
 }
 
 export interface StoreInfoFormProps {
   store: Store;
+  onMutated?: () => void;
 }
 
 export interface StaffMember {
@@ -51,14 +54,17 @@ export interface StaffManagerProps {
   members: StaffMember[];
   planCode: PlanCode;
   limit: number;
+  onMutated?: () => void;
 }
 
 export interface ReservationLinkManagerProps {
   links: ReservationLink[];
+  onMutated?: () => void;
 }
 
 export interface DocumentManagerProps {
   documents: StoreDocumentWithUrl[];
+  onMutated?: () => void;
 }
 
 export interface DocumentChecklistItemProps {
@@ -67,4 +73,5 @@ export interface DocumentChecklistItemProps {
   index: number;
   uploading: boolean;
   onUploadFile: (docType: DocumentType, file: File) => Promise<void>;
+  onMutated?: () => void;
 }

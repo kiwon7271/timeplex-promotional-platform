@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { IconCheck, IconLock, IconUserPlus } from "@tabler/icons-react";
-import { onSubmitApplication } from "@/actions/applications";
+import { apiPost } from "@/lib/api-client";
 import Modal from "@/components/ui/modal";
 import Field from "@/components/ui/field";
 import Input from "@/components/ui/input";
@@ -20,13 +20,17 @@ const ApplicationModal = ({ open, onClose }: ApplicationModalProps) => {
   const onSubmit = async (formData: FormData) => {
     setLoading(true);
     setError(null);
-    const res = await onSubmitApplication(formData);
+    const res = await apiPost("/api/applications/submit", formData);
     setLoading(false);
     if (!res.ok) {
       setError(res.message ?? "회원가입에 실패했습니다.");
       return;
     }
-    setDone(res.message ?? "회원가입이 완료되었습니다.");
+    const successMessage =
+      "message" in res && typeof res.message === "string"
+        ? res.message
+        : "회원가입이 완료되었습니다.";
+    setDone(successMessage);
   };
 
   const onCloseReset = () => {

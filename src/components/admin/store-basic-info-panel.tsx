@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { onUpdateStoreStatus, onUpdateStorePlan } from "@/actions/stores";
+import { apiPatch } from "@/lib/api-client";
 import { PLAN_CODES } from "@/lib/constants";
 import { STORE_STATUS_OPTIONS } from "@/lib/status-label";
 import type { Store } from "@/types/database";
@@ -17,13 +17,13 @@ const StoreBasicInfoPanel = ({ store }: StoreBasicInfoPanelProps) => {
   const router = useRouter();
 
   const onChangeStoreStatus = async (next: string) => {
-    const res = await onUpdateStoreStatus(store.id, next);
+    const res = await apiPatch(`/api/admin/stores/${store.id}`, { status: next });
     if (res.ok) router.refresh();
     return res;
   };
 
   const onChangeStorePlan = async (next: string) => {
-    const res = await onUpdateStorePlan(store.id, next);
+    const res = await apiPatch(`/api/admin/stores/${store.id}`, { planCode: next });
     if (res.ok) router.refresh();
     return res;
   };

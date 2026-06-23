@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { PROFILE_COLUMNS } from "@/lib/supabase/query-columns";
 import { ROLES, type Role } from "@/lib/constants";
 import type { Profile } from "@/types/database";
 
@@ -13,7 +14,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
 
   if (!user) return null;
 
-  const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+  const { data } = await supabase.from("profiles").select(PROFILE_COLUMNS).eq("id", user.id).single();
 
   return data;
 });

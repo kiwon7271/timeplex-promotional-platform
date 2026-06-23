@@ -8,6 +8,12 @@ import type { InquiryThreadPayload } from "@/lib/inquiry-thread";
 import { isInquiryCategory } from "@/lib/inquiry-category";
 import type { ActionResult } from "@/types/action-result";
 import type { InquiryMessageWithAuthor } from "@/lib/inquiry-thread";
+import {
+  INQUIRY_COLUMNS,
+  INQUIRY_MESSAGE_COLUMNS,
+  INQUIRY_MESSAGE_WITH_PROFILE,
+  PROFILE_COLUMNS,
+} from "@/lib/supabase/query-columns";
 
 export type InquiryThreadResult = ActionResult & { data?: InquiryThreadPayload };
 
@@ -24,18 +30,23 @@ const mapMessagesWithAuthor = (
     author_role: string;
     body: string;
     created_at: string;
-    profiles: { full_name: string | null; email: string } | null;
+    profiles: { full_name: string | null; email: string } | { full_name: string | null; email: string }[] | null;
   }>,
 ): InquiryMessageWithAuthor[] =>
-  rows.map((row) => ({
-    id: row.id,
-    inquiry_id: row.inquiry_id,
-    author_id: row.author_id,
-    author_role: row.author_role,
-    body: row.body,
-    created_at: row.created_at,
-    author_name: row.profiles?.full_name?.trim() || row.profiles?.email || "알 수 없음",
-  }));
+  rows.map((row) => {
+    const profileRaw = row.profiles;
+    const profile = Array.isArray(profileRaw) ? profileRaw[0] : profileRaw;
+
+    return {
+      id: row.id,
+      inquiry_id: row.inquiry_id,
+      author_id: row.author_id,
+      author_role: row.author_role,
+      body: row.body,
+      created_at: row.created_at,
+      author_name: profile?.full_name?.trim() || profile?.email || "알 수 없음",
+    };
+  });
 
 /** 문의 스레드 조회 — 매장·통합관리자 */
 export const getInquiryThread = async (inquiryId: string): Promise<InquiryThreadResult> => {
@@ -50,7 +61,11 @@ export const getInquiryThread = async (inquiryId: string): Promise<InquiryThread
 
   const isAdmin = profile.role === ROLES.SUPER_ADMIN;
 
-  const { data: inquiry } = await supabase.from("inquiries").select("*").eq("id", inquiryId).maybeSingle();
+  const { data: inquiry } = await supabase
+    .from("inquiries")
+    .select(INQUIRY_COLUMNS)
+    .eq("id", inquiryId)
+    .maybeSingle();
   if (!inquiry) return { ok: false, message: "문의를 찾을 수 없습니다." };
 
   if (!isAdmin && inquiry.store_id !== profile.store_id) {
@@ -61,7 +76,7 @@ export const getInquiryThread = async (inquiryId: string): Promise<InquiryThread
     supabase.from("stores").select("name").eq("id", inquiry.store_id).maybeSingle(),
     supabase
       .from("inquiry_messages")
-      .select("*, profiles(full_name, email)")
+      .select(INQUIRY_MESSAGE_WITH_PROFILE)
       .eq("inquiry_id", inquiryId)
       .order("created_at", { ascending: true }),
   ]);
@@ -118,14 +133,22 @@ export const onPostInquiryMessage = async (formData: FormData): Promise<ActionRe
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, message: "로그인이 필요합니다." };
 
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select(PROFILE_COLUMNS)
+    .eq("id", user.id)
+    .single();
   if (!profile) return { ok: false, message: "프로필을 찾을 수 없습니다." };
 
   const isAdmin = profile.role === ROLES.SUPER_ADMIN;
   const isStoreUser = profile.role === ROLES.STORE_OWNER || profile.role === ROLES.STORE_STAFF;
   if (!isAdmin && !isStoreUser) return { ok: false, message: "권한이 없습니다." };
 
-  const { data: inquiry } = await supabase.from("inquiries").select("*").eq("id", inquiryId).maybeSingle();
+  const { data: inquiry } = await supabase
+    .from("inquiries")
+    .select(INQUIRY_COLUMNS)
+    .eq("id", inquiryId)
+    .maybeSingle();
   if (!inquiry) return { ok: false, message: "문의를 찾을 수 없습니다." };
   if (!isAdmin && inquiry.store_id !== profile.store_id) {
     return { ok: false, message: "접근 권한이 없습니다." };
@@ -204,7 +227,11 @@ export const onUpdateInquiryOpening = async (
   if (!profile.store_id) return { ok: false, message: "소속 매장이 없습니다." };
 
   const supabase = createClient();
-  const { data: inquiry } = await supabase.from("inquiries").select("*").eq("id", inquiryId).maybeSingle();
+  const { data: inquiry } = await supabase
+    .from("inquiries")
+    .select(INQUIRY_COLUMNS)
+    .eq("id", inquiryId)
+    .maybeSingle();
   if (!inquiry) return { ok: false, message: "문의를 찾을 수 없습니다." };
   if (inquiry.store_id !== profile.store_id) {
     return { ok: false, message: "수정 권한이 없습니다." };
@@ -236,7 +263,7 @@ export const onUpdateInquiryMessage = async (
 
   const { data: message } = await supabase
     .from("inquiry_messages")
-    .select("*")
+    .select(INQUIRY_MESSAGE_COLUMNS)
     .eq("id", messageId)
     .maybeSingle();
   if (!message) return { ok: false, message: "글을 찾을 수 없습니다." };
@@ -264,7 +291,7 @@ export const onDeleteInquiryMessage = async (messageId: string): Promise<ActionR
 
   const { data: message } = await supabase
     .from("inquiry_messages")
-    .select("*")
+    .select(INQUIRY_MESSAGE_COLUMNS)
     .eq("id", messageId)
     .maybeSingle();
   if (!message) return { ok: false, message: "글을 찾을 수 없습니다." };

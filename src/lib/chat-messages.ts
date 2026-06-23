@@ -1,15 +1,11 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { MESSAGE_SELECT } from "@/lib/supabase/query-columns";
 import { BUCKETS } from "@/lib/constants";
 import type { MessageWithAttachments } from "@/types/chat";
 
-/** 메시지 조회 select (첨부·예약링크 포함) */
-export const MESSAGE_SELECT = `
-  *,
-  attachments:message_attachments(file_name, file_path),
-  reservation_links:message_reservation_links(provider, url)
-`;
+export { MESSAGE_SELECT } from "@/lib/supabase/query-columns";
 
 /** 메시지 첨부 signed URL 부여 */
 export const attachMessageSignedUrls = async (

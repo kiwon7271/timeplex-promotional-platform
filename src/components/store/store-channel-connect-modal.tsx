@@ -16,6 +16,7 @@ interface StoreChannelConnectModalProps {
   lineWebhookUrl: string;
   lineDiagnostic: LineConnectionDiagnostic;
   translationEnabled: boolean;
+  onMutated?: () => void;
 }
 
 const getConnectionStatus = (
@@ -32,6 +33,7 @@ const StoreChannelConnectModal = ({
   lineWebhookUrl,
   lineDiagnostic,
   translationEnabled,
+  onMutated,
 }: StoreChannelConnectModalProps) => {
   const [open, setOpen] = useState(false);
 
@@ -66,6 +68,7 @@ const StoreChannelConnectModal = ({
             lineWebhookUrl={lineWebhookUrl}
             lineDiagnostic={lineDiagnostic}
             embedded
+            onMutated={onMutated}
           />
           <div className="flex justify-end">
             <Button type="button" variant="primary" onClick={onCloseModal}>

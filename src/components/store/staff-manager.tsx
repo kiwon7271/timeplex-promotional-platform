@@ -7,8 +7,7 @@ import {
   IconTrash,
   IconUserPlus,
 } from "@tabler/icons-react";
-import { useRouter } from "next/navigation";
-import { onInviteStaff, onDeleteStaff } from "@/actions/stores";
+import { apiDelete, apiPost } from "@/lib/api-client";
 import type { StaffManagerProps } from "@/types/store";
 import { getRoleLabel } from "@/lib/status-label";
 import ListSection from "@/components/ui/list-section";
@@ -23,20 +22,22 @@ import ActionButton from "@/components/ui/action-button";
 import { getControlIconSize, ICON_SIZE, ICON_STROKE } from "@/lib/icon-size";
 
 /** 직원 초대, 목록, 삭제 (요금제 인원 제한) */
-const StaffManager = ({ members, planCode, limit }: StaffManagerProps) => {
-  const router = useRouter();
+const StaffManager = ({ members, planCode, limit, onMutated }: StaffManagerProps) => {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const reachedLimit = members.length >= limit;
 
   const onInvite = async (formData: FormData) => {
-    const res = await onInviteStaff(formData);
+    const res = await apiPost("/api/store/staff/invite", formData);
     setMessage(res.message ?? (res.ok ? "초대 완료" : "초대 실패"));
     if (res.ok) {
       setOpen(false);
-      router.refresh();
+      onMutated?.();
     }
   };
+
+  const onClickDeleteStaff = async (profileId: string) =>
+    apiDelete(`/api/store/staff/${profileId}`);
 
   return (
     <div className="space-y-6">
@@ -55,7 +56,11 @@ const StaffManager = ({ members, planCode, limit }: StaffManagerProps) => {
                       variant="danger"
                       size="sm"
                       confirm="직원을 삭제하시겠습니까?"
-                      onAction={onDeleteStaff.bind(null, m.profile_id)}
+                      onAction={async () => {
+                        const res = await onClickDeleteStaff(m.profile_id);
+                        if (res.ok) onMutated?.();
+                        return res;
+                      }}
                       icon={
                         <IconTrash size={getControlIconSize("sm")} stroke={ICON_STROKE} />
                       }

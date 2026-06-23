@@ -13,6 +13,7 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/admin/chat-usage", label: "채팅사용량", icon: "usage" as NavIconName },
   { href: "/admin/store-inquiries", label: "매장문의", icon: "inquiry" as NavIconName },
   { href: "/admin/settings", label: "설정", icon: "settings" as NavIconName },
+  { href: "/admin/system", label: "시스템", icon: "settings" as NavIconName },
 ];
 
 export const STORE_NAV: NavItem[] = [

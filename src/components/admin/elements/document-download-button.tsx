@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { IconDownload } from "@tabler/icons-react";
-import { onDownloadDocument } from "@/actions/documents";
+import { apiGet } from "@/lib/api-client";
 import { useDialog } from "@/components/providers/dialog-provider";
 import Button from "@/components/ui/button";
 import IconButton from "@/components/ui/icon-button";
@@ -30,8 +30,8 @@ const DocumentDownloadButton = ({
 
   const onClickDownloadButton = () => {
     startTransition(async () => {
-      const res = await onDownloadDocument(documentId);
-      if (!res.ok || !res.url) {
+      const res = await apiGet<{ url: string }>(`/api/admin/documents/${documentId}`);
+      if (!res.ok) {
         await openAlert({
           title: "다운로드 실패",
           message: res.message ?? "파일을 다운로드할 수 없습니다.",
@@ -39,8 +39,17 @@ const DocumentDownloadButton = ({
         return;
       }
 
+      const url = res.data?.url;
+      if (!url) {
+        await openAlert({
+          title: "다운로드 실패",
+          message: "파일을 다운로드할 수 없습니다.",
+        });
+        return;
+      }
+
       const link = document.createElement("a");
-      link.href = res.url;
+      link.href = url;
       link.download = fileName;
       link.rel = "noopener noreferrer";
       link.target = "_blank";
