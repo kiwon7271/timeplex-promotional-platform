@@ -102,10 +102,11 @@ export const useChatRealtime = ({
       }
 
       const data = await fetchChatMessagesApi(targetConversationId);
-      messagesCacheRef.current[targetConversationId] = data;
-
-      if (conversationIdRef.current === targetConversationId) {
-        setMessages(data);
+      if (data.length > 0 || !messagesCacheRef.current[targetConversationId]?.length) {
+        messagesCacheRef.current[targetConversationId] = data;
+        if (conversationIdRef.current === targetConversationId) {
+          setMessages(data);
+        }
       }
     } catch {
       // 기존 값 유지

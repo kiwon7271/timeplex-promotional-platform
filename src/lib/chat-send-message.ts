@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { enqueueJob } from "@/jobs/queue";
+import { enqueueJob, runJobWithDispatch } from "@/jobs/queue";
 import { attachMessageSignedUrls, MESSAGE_SELECT } from "@/lib/chat-messages";
 import { hasStoreChatConsent } from "@/lib/consent";
 import { BUCKETS } from "@/lib/constants";
@@ -136,7 +136,8 @@ export const sendStoreMessage = async (
     })
     .eq("id", input.conversationId);
 
-  enqueueJob("deliver-message", {
+  // Route API 응답 후 serverless가 종료되므로 번역·LINE 전송은 반드시 await
+  await runJobWithDispatch("deliver-message", {
     messageId: message.id,
     conversationId: input.conversationId,
   });

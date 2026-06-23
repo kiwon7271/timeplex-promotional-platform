@@ -4,7 +4,7 @@ import { requireStoreApiUser } from "@/lib/api/store-auth";
 import { sendStoreMessage } from "@/lib/chat-send-message";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 /** POST — 매장 메시지 전송 */
 export async function POST(request: Request) {

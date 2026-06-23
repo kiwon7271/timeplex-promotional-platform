@@ -50,27 +50,29 @@ const dispatchJobViaHttp = async <T extends JobName>(name: T, payload: JobPayloa
   return true;
 };
 
-/** HTTP dispatch → 인라인 fallback */
+/** HTTP dispatch → 인라인 fallback (fire-and-forget) */
 export const enqueueJob = <T extends JobName>(name: T, payload: JobPayloadMap[T]) => {
-  void (async () => {
-    try {
-      if (await dispatchJobViaHttp(name, payload)) {
-        log.debug("Job dispatched via HTTP", { name });
-        return;
-      }
+  void runJobWithDispatch(name, payload);
+};
 
-      await runJob(name, payload);
-    } catch (error) {
-      captureJobError(name, error, { payload });
-
-      try {
-        if (await dispatchJobViaHttp(name, payload)) return;
-        await runJob(name, payload);
-      } catch (retryError) {
-        captureJobError(name, retryError, { payload, retry: "inline" });
-      }
+/** Vercel/Route API — 응답 전 job 완료 대기 (매장 발신 등) */
+export const runJobWithDispatch = async <T extends JobName>(
+  name: T,
+  payload: JobPayloadMap[T],
+) => {
+  try {
+    if (await dispatchJobViaHttp(name, payload)) {
+      log.debug("Job dispatched via HTTP", { name });
+      return;
     }
-  })();
+
+    await runJob(name, payload);
+  } catch (error) {
+    captureJobError(name, error, { payload });
+
+    if (await dispatchJobViaHttp(name, payload)) return;
+    await runJob(name, payload);
+  }
 };
 
 export const runJobSync = runJob;
