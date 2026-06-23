@@ -38,9 +38,14 @@ export const sendChatMessageApi = async (formData: FormData) => {
 
     const json = await parseApiResponse<MessageWithAttachments>(response);
     if (!response.ok || !json.ok) {
+      const failMessage =
+        !json.ok && "message" in json && json.message
+          ? json.message
+          : `전송 실패 (${response.status})`;
       return {
         ok: false as const,
-        message: json.ok ? `전송 실패 (${response.status})` : json.message ?? "전송 실패",
+        message: failMessage,
+        data: !json.ok ? undefined : json.data,
       };
     }
 

@@ -153,4 +153,24 @@ export const sendStoreMessage = async (
   return { ok: true, data: withUrls };
 };
 
+/** 전송·배달 후 메시지 재조회 */
+export const refetchStoreMessage = async (
+  supabase: SupabaseClient,
+  messageId: string,
+): Promise<MessageWithAttachments | null> => {
+  const { data: messageRow } = await supabase
+    .from("messages")
+    .select(MESSAGE_SELECT)
+    .eq("id", messageId)
+    .single();
+
+  if (!messageRow) return null;
+
+  const [withUrls] = await attachMessageSignedUrls(
+    [messageRow as MessageWithAttachments],
+    supabase,
+  );
+  return withUrls;
+};
+
 const normalizeFileName = (name: string) => name.replace(/[^\w.\-가-힣]/g, "_");

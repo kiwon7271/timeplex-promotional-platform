@@ -23,8 +23,17 @@ export const dispatchOutboundMessage = async (params: {
     .eq("id", params.conversationId)
     .single();
 
-  if (!conversation?.external_thread_id) return { ok: true as const };
-  if (conversation.channel !== "LINE") return { ok: true as const };
+  if (!conversation) {
+    return { ok: false as const, message: "대화를 찾을 수 없습니다." };
+  }
+
+  if (conversation.channel !== "LINE") {
+    return { ok: true as const };
+  }
+
+  if (!conversation.external_thread_id) {
+    return { ok: false as const, message: "LINE 고객 ID가 없습니다." };
+  }
 
   const { data: connection } = await supabase
     .from("store_channel_connections")
@@ -47,10 +56,13 @@ export const dispatchOutboundMessage = async (params: {
     lineUserId: conversation.external_thread_id,
   };
 
+  let sentCount = 0;
+
   const textToSend = params.translatedBody?.trim() || params.body.trim();
   if (textToSend && textToSend !== "(이미지)" && textToSend !== "(예약링크)") {
     const textResult = await sendLinePushText({ ...pushParams, text: textToSend });
     if (!textResult.ok) return textResult;
+    sentCount += 1;
   }
 
   const { data: reservationLinks } = await supabase
@@ -62,6 +74,7 @@ export const dispatchOutboundMessage = async (params: {
     const linkText = `${getProviderLabel(link.provider)} 예약: ${link.url}`;
     const linkResult = await sendLinePushText({ ...pushParams, text: linkText });
     if (!linkResult.ok) return linkResult;
+    sentCount += 1;
   }
 
   const { data: attachments } = await supabase
@@ -85,6 +98,11 @@ export const dispatchOutboundMessage = async (params: {
       imageUrl: signed.signedUrl,
     });
     if (!imageResult.ok) return imageResult;
+    sentCount += 1;
+  }
+
+  if (sentCount === 0) {
+    return { ok: false as const, message: "LINE으로 전송할 내용이 없습니다." };
   }
 
   return { ok: true as const };

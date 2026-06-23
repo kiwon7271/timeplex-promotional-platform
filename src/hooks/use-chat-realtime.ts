@@ -192,7 +192,9 @@ export const useChatRealtime = ({
       const activeId = conversationIdRef.current;
       setMessages((prev) => {
         const next = [
-          ...prev.filter((item) => item.id !== tempId && item.id !== message.id),
+          ...prev.filter(
+            (item) => item.id !== message.id && (tempId ? item.id !== tempId : true),
+          ),
           message,
         ];
         if (activeId) messagesCacheRef.current[activeId] = next;

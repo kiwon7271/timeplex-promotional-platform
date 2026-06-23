@@ -120,6 +120,8 @@ const MessageComposer = ({
 
       if (optimisticId && res.data && onConfirmSent) {
         onConfirmSent(optimisticId, res.data);
+      } else if (res.data && onConfirmSent) {
+        onConfirmSent("", res.data);
       }
 
       if (!isTextOnly) {
